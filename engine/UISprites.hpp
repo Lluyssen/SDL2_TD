@@ -10,6 +10,6 @@ struct SpriteDef
 namespace UISprites 
 {
     inline const SpriteDef Play     {{ 210,  45, 117, 45 }};
-    inline const SpriteDef Options {{ 178, 266, 186, 46 }};
-    inline const SpriteDef Exit {{ 211, 322, 118, 44 }};
+    inline const SpriteDef Options {{ 179, 266, 186, 45 }};
+    inline const SpriteDef Exit {{ 212, 322, 118, 43 }};
 }

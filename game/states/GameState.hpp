@@ -12,7 +12,6 @@ private:
     GameManager _manager;
 
 public:
-
     bool allowUpdateBelow() const override { return false; }
     bool allowRenderBelow() const override { return true; }
 
@@ -62,9 +61,10 @@ public:
     void render(StateManager &sm) override
     {
         auto *renderer = sm.getContext().renderer;
-        // --- Draw Position/Velocity entities ---
         auto &regPV = _scenePosVel->getRegistry();
-        for (Entity e : regPV.getAliveEntities())
+
+        // --- Draw Position/Velocity entities ---
+        for (Entity e : regPV.getAliveEntities()) 
         {
             if (auto *pos = regPV.getIf<Position>(e))
             {
