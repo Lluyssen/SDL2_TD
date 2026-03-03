@@ -2,6 +2,7 @@
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
+#include <SDL2/SDL_mixer.h>
 #include <iostream>
 #include "../ecs/ECS.hpp"
 #include "../game/Components.hpp"
@@ -63,13 +64,16 @@ public:
     Game(void) = default;
     virtual ~Game(void) = default;
 
-    bool init(int width = 800, int height = 600)
+    bool init(int width = 1920, int height = 1080)
     {
         if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) != 0)
         {
             std::cerr << "SDL_Init failed: " << SDL_GetError() << std::endl;
             return false;
         }
+
+        if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0)
+            SDL_Log("Erreur SDL_mixer : %s", Mix_GetError());
 
         IMG_Init(IMG_INIT_PNG);
 
