@@ -9,6 +9,7 @@ private:
     SDL_Rect rect{};
     SDL_Rect src{};
     SDL_Rect visualRect{};
+
     PixelRevealEffect reveal;
 
     bool hovered = false;
@@ -61,9 +62,9 @@ public:
             onClick();
     }
 
-    void render(SDL_Renderer *renderer, SDL_Texture *texture, float appear)
+    void render(SDL_Renderer *renderer, SDL_Texture *texture, float t)
     {
-        reveal.render(renderer, texture, appear);
+        reveal.render(renderer, texture, t);
 
         if (hovered)
         {
@@ -71,5 +72,10 @@ public:
             SDL_SetRenderDrawColor(renderer, 255, 255, 255, 40);
             SDL_RenderFillRect(renderer, &visualRect);
         }
+    }
+
+    void resetReveal()
+    {
+        reveal.generate(src, rect);
     }
 };

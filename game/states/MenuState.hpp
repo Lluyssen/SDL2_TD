@@ -21,22 +21,24 @@ constexpr int TILE_SIZE = 32;
 class MenuState : public IGameState
 {
 private:
+    enum class Action
+    {
+        None,
+        Play,
+        Options,
+        Exit
+    };
+
     std::vector<UIButton> buttons;
-
     AnimatedBackground background;
-
     ScreenFade fade;
-
     SDL_Texture *uiTexture = nullptr;
-
     float appearTimer = 0.f;
     const float appearDuration = 1.f;
-
     bool layoutDirty = true;
-
     Mix_Music *bgMusic = nullptr;
-
-    bool requestPlay = false;
+    Action pendingAction = Action::None;
+    Mix_Chunk *clickSound = nullptr;
 
 private:
     std::vector<SDL_Rect> computeLayout(int w, int h)
@@ -46,9 +48,7 @@ private:
         int bw = w / 3;
         int bh = TILE_SIZE * 2;
         int spacing = TILE_SIZE;
-
         int totalH = buttons.size() * bh + (buttons.size() - 1) * spacing;
-
         int y = (h - totalH) / 2;
         int cx = w / 2;
 
@@ -83,7 +83,6 @@ public:
     MenuState()
     {
         buttons.resize(3);
-
         buttons[0].setSprite(UISprites::Play.src);
         buttons[1].setSprite(UISprites::Options.src);
         buttons[2].setSprite(UISprites::Exit.src);
@@ -108,14 +107,28 @@ public:
         appearTimer = 0.f;
         layoutDirty = true;
 
-        // UI texture
+        rebuildLayout(renderer);
+
+        for (auto &b : buttons)
+            b.resetReveal();
+
+        // texture UI
         if (!uiTexture)
         {
             assets->loadTexture("ui", "assets/ui/spriteMenu.png");
             uiTexture = assets->getTexture("ui");
         }
 
-        // Background frames
+        // click sound button
+        if (!clickSound)
+        {
+            clickSound = Mix_LoadWAV("assets/audio/click.wav");
+
+            if (!clickSound)
+                SDL_Log("Failed to load click sound: %s", Mix_GetError());
+        }
+
+        // fond animé
         background = AnimatedBackground();
 
         for (int i = 0;; i++)
@@ -135,30 +148,33 @@ public:
             background.addFrame(tex);
         }
 
-        // Music
+        // musique
         if (!bgMusic)
         {
             bgMusic = Mix_LoadMUS("assets/audio/menu_music.mp3");
+
             if (bgMusic)
                 Mix_PlayMusic(bgMusic, -1);
         }
 
-        // Callbacks
+        // callbacks boutons
+
         buttons[0].onClick = [this]()
         {
-            requestPlay = true;
+            pendingAction = Action::Play;
+            fade.start();
         };
 
-        buttons[1].onClick = []()
+        buttons[1].onClick = [this]()
         {
-            SDL_Log("OPTIONS MENU");
+            pendingAction = Action::Options;
+            fade.start();
         };
 
-        buttons[2].onClick = []()
+        buttons[2].onClick = [this]()
         {
-            SDL_Event e;
-            e.type = SDL_QUIT;
-            SDL_PushEvent(&e);
+            pendingAction = Action::Exit;
+            fade.start();
         };
 
         rebuildLayout(renderer);
@@ -175,11 +191,8 @@ public:
         if (fade.isActive())
             return;
 
-        if (e.type == SDL_WINDOWEVENT &&
-            e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
-        {
+        if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
             layoutDirty = true;
-        }
 
         if (e.type == SDL_MOUSEMOTION)
         {
@@ -190,8 +203,7 @@ public:
                 b.setHovered(b.contains(x, y));
         }
 
-        if (e.type == SDL_MOUSEBUTTONDOWN &&
-            e.button.button == SDL_BUTTON_LEFT)
+        if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT)
         {
             int x = e.button.x;
             int y = e.button.y;
@@ -200,7 +212,8 @@ public:
             {
                 if (b.contains(x, y))
                 {
-                    fade.start();
+                    if (clickSound)
+                        Mix_PlayChannel(-1, clickSound, 0);
                     b.click();
                     break;
                 }
@@ -211,15 +224,30 @@ public:
     void update(StateManager &sm, float dt) override
     {
         background.update(dt);
-
         appearTimer = std::min(appearTimer + dt, appearDuration);
-
         fade.update(dt);
 
-        if (requestPlay && fade.finished())
+        if (fade.finished())
         {
-            sm.changeState<GameState>();
-            return;
+            switch (pendingAction)
+            {
+            case Action::Play:
+                sm.changeState<GameState>();
+                return;
+
+            case Action::Exit:
+            {
+                SDL_Event e;
+                e.type = SDL_QUIT;
+                SDL_PushEvent(&e);
+                break;
+            }
+
+            default:
+                break;
+            }
+
+            pendingAction = Action::None;
         }
     }
 
@@ -232,16 +260,13 @@ public:
         int w, h;
         SDL_GetRendererOutputSize(renderer, &w, &h);
 
-        // background
         background.render(renderer, w, h);
 
-        float appear = appearTimer / appearDuration;
+        float appear = std::clamp(appearTimer / appearDuration, 0.f, 1.f);
 
-        // buttons
         for (auto &b : buttons)
             b.render(renderer, uiTexture, appear);
 
-        // transition
         fade.render(renderer, w, h);
     }
 
