@@ -39,6 +39,9 @@ private:
     Mix_Music *bgMusic = nullptr;
     Action pendingAction = Action::None;
     Mix_Chunk *clickSound = nullptr;
+    float parallaxX = 0.f;
+    float parallaxY = 0.f;
+    float parallaxStrength = 20.f;
 
 private:
     std::vector<SDL_Rect> computeLayout(int w, int h)
@@ -186,7 +189,7 @@ public:
             Mix_HaltMusic();
     }
 
-    void handleEvent(StateManager &, const SDL_Event &e) override
+    void handleEvent(StateManager &sm, const SDL_Event &e) override
     {
         if (fade.isActive())
             return;
@@ -199,8 +202,19 @@ public:
             int x = e.motion.x;
             int y = e.motion.y;
 
+            // hover boutons
             for (auto &b : buttons)
                 b.setHovered(b.contains(x, y));
+
+            // calcul parallax
+            int w, h;
+            SDL_GetRendererOutputSize(sm.getContext().renderer, &w, &h);
+
+            float nx = (float)x / w - 0.5f;
+            float ny = (float)y / h - 0.5f;
+
+            parallaxX = nx * parallaxStrength;
+            parallaxY = ny * parallaxStrength;
         }
 
         if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT)
@@ -214,6 +228,7 @@ public:
                 {
                     if (clickSound)
                         Mix_PlayChannel(-1, clickSound, 0);
+
                     b.click();
                     break;
                 }
@@ -260,7 +275,13 @@ public:
         int w, h;
         SDL_GetRendererOutputSize(renderer, &w, &h);
 
-        background.render(renderer, w, h);
+        SDL_Rect bgRect{
+            (int)-parallaxX,
+            (int)-parallaxY,
+            w + (int)parallaxStrength * 2,
+            h + (int)parallaxStrength * 2};
+
+        background.render(renderer, bgRect);
 
         float appear = std::clamp(appearTimer / appearDuration, 0.f, 1.f);
 
