@@ -10,41 +10,30 @@
 #include "menu/MenuTitle.hpp"
 #include "menu/MenuMusic.hpp"
 
-// État du menu principal : orchestre fond, étoiles, UI, PNJ et musique.
-#pragma once
-
-#include "../utils/StateManager.hpp"
-#include "raylib.h"
-#include "GameState.hpp"
-#include "../ui/Starfield.hpp"
-#include "menu/MenuBackground.hpp"
-#include "menu/MenuButtons.hpp"
-#include "menu/MenuNPC.hpp"
-#include "menu/MenuTitle.hpp"
-#include "menu/MenuMusic.hpp"
-
-// État du menu principal : fond animé, étoiles, UI, PNJ et musique.
+// État du menu principal : gère fond animé, étoiles, UI, PNJ et musique.
 class MenuState : public IGameState
 {
 private:
+
+    // Phases internes du menu
     enum class Phase
     {
-        Loading,
-        UIReveal,
-        Idle
+        Loading,   // attente avant l’apparition de l’UI
+        UIReveal,  // animation d'entrée des boutons
+        Idle       // menu interactif
     };
 
     Phase _phase = Phase::Loading;
     float _timer = 0;
 
-    // Sous-composants du menu
+    // Sous-systèmes du menu
     MenuBackground _background;
     MenuButtons _buttons;
     MenuTitle _title;
     MenuNPC _npc;
     MenuMusic _music;
 
-    // ECS étoiles
+    // ECS utilisé pour le champ d'étoiles (3 couches de profondeur)
     Registry<StarComponents> _starRegistry;
     std::unique_ptr<StarfieldSystem> _farStars;
     std::unique_ptr<StarfieldSystem> _midStars;
@@ -54,16 +43,20 @@ private:
     Texture2D _loadingTexture{};
     bool _loading = true;
 
+    // Chargement progressif des frames du background
     int _bgFramesLoaded = 0;
     const int _bgTotalFrames = 41;
 
 public:
+
     MenuState() = default;
 
+    // Initialisation de l’état
     void onEnter(StateManager &sm) override
     {
         auto &ctx = sm.getContext();
 
+        // Image de l'écran de chargement
         _loadingTexture = LoadTexture("../assets/ui/loading.png");
 
         _loading = true;
@@ -72,11 +65,12 @@ public:
         int w = ctx.getWidth();
         int h = ctx.getHeight();
 
+        // Initialisation UI et musique
         _buttons.init(ctx);
         _npc.init();
         _music.load();
 
-        // ECS étoiles
+        // Initialisation ECS étoiles
         _starRegistry = Registry<StarComponents>();
 
         _farStars = std::make_unique<StarfieldSystem>(w, h);
@@ -91,11 +85,12 @@ public:
         _timer = 0;
     }
 
+    // Mise à jour logique du menu
     void update(StateManager &sm, float dt) override
     {
         auto &ctx = sm.getContext();
 
-        // Chargement progressif du background
+        // Chargement progressif du background pour éviter un freeze
         if (_loading)
         {
             if (_bgFramesLoaded < _bgTotalFrames)
@@ -112,16 +107,18 @@ public:
             return;
         }
 
-        dt = std::min(dt, 0.05f);
+        dt = std::min(dt, 0.05f); // limite les gros dt (pause/debug)
 
         _background.update(dt);
         _music.update();
         _npc.update(dt);
 
+        // Mise à jour des étoiles
         _farStars->update(dt, _starRegistry);
         _midStars->update(dt, _starRegistry);
         _nearStars->update(dt, _starRegistry);
 
+        // Machine d’état du menu
         switch (_phase)
         {
         case Phase::Loading:
@@ -156,6 +153,7 @@ public:
         }
     }
 
+    // Rendu graphique
     void render(StateManager &sm) override
     {
         auto &ctx = sm.getContext();
@@ -163,7 +161,7 @@ public:
         int w = ctx.getWidth();
         int h = ctx.getHeight();
 
-        // Loading screen
+        // Écran de chargement
         if (_loading)
         {
             ClearBackground(BLACK);
@@ -180,13 +178,7 @@ public:
                 (float)w,
                 (float)h};
 
-            DrawTexturePro(
-                _loadingTexture,
-                src,
-                dst,
-                {0, 0},
-                0,
-                WHITE);
+            DrawTexturePro(_loadingTexture, src, dst, {0, 0}, 0, WHITE);
 
             float progress = (float)_bgFramesLoaded / (float)_bgTotalFrames;
             progress = std::clamp(progress, 0.0f, 1.0f);
@@ -197,6 +189,7 @@ public:
             int x = w / 2 - barWidth / 2;
             int y = h / 2 + 240;
 
+            // Barre de progression
             DrawRectangle(x, y, barWidth, barHeight, DARKGRAY);
             DrawRectangle(x, y, barWidth * progress, barHeight, GOLD);
             DrawRectangleLines(x, y, barWidth, barHeight, WHITE);
@@ -211,6 +204,7 @@ public:
             return;
         }
 
+        // Rendu normal du menu
         _background.draw(w, h);
 
         _farStars->draw(_starRegistry);
@@ -225,6 +219,7 @@ public:
         _npc.draw(h);
     }
 
+    // Action déclenchée par un bouton
     void activate(StateManager &sm, int id)
     {
         switch (id)
@@ -239,6 +234,7 @@ public:
         }
     }
 
+    // Nettoyage lors de la sortie de l’état
     void onExit(StateManager &) override
     {
         _music.unload();
