@@ -5,10 +5,11 @@ class UIButton;
 class UIAnimation
 {
 public:
-
     virtual ~UIAnimation() = default;
 
-    virtual void update(UIButton&, float) = 0;
+    virtual void reset() {}
 
-    virtual void draw(UIButton&) {}
+    virtual void update(class UIButton&, float) {}
+
+    virtual void draw(class UIButton&) {}
 };

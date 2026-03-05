@@ -49,12 +49,32 @@ public:
             return;
 
         Texture2D &tex = *_frames[_currentFrame];
-        DrawTexturePro( 
+        DrawTexturePro(
             tex,
             {0, 0, (float)tex.width, (float)tex.height},
             {0, 0, (float)width, (float)height},
             {0, 0},
             0,
             WHITE);
+    }
+
+    void drawFullscreen(int w, int h, float offsetX, float offsetY)
+    {
+        Texture2D &tex = *_frames[_currentFrame];
+
+        float zoom = 1.1f; // 10% plus grand que l'écran
+
+        float drawW = w * zoom;
+        float drawH = h * zoom;
+
+        Rectangle src{0, 0, (float)tex.width, (float)tex.height};
+
+        Rectangle dst{
+            (w - drawW) * 0.5f + offsetX,
+            (h - drawH) * 0.5f + offsetY,
+            drawW,
+            drawH};
+
+        DrawTexturePro(tex, src, dst, {0, 0}, 0.0f, WHITE);
     }
 };

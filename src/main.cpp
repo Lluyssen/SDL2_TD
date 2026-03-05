@@ -9,6 +9,7 @@ int main()
     // Initialisation raylib
     InitWindow(1280, 720, "Tower Defense");
     SetTargetFPS(60);
+    InitAudioDevice();
 
     // Contexte global du jeu
     GameContext context;
