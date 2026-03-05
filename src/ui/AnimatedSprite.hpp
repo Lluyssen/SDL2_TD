@@ -6,18 +6,26 @@
 
 class GameContext;
 
+// Gère un sprite animé constitué d’une séquence de textures pour un rendu fluide.
 class AnimatedSprite
 {
 private:
+    // Liste des textures représentant chaque frame de l’animation.
     std::vector<Texture2D *> _frames;
 
+    // Index de la frame actuelle.
     int _currentFrame = 0;
+
+    // Timer interne pour contrôler la vitesse d’animation.
     float _timer = 0.f;
+
+    // Durée d’affichage d’une frame.
     float _frameTime = 0.05f;
 
 public:
     AnimatedSprite() = default;
 
+    // Charge les textures à partir d’un chemin de base et nombre de frames.
     void load(GameContext &ctx, const std::string &basePath, int frameCount, float frameTime = 0.05f)
     {
         _frames.clear();
@@ -31,6 +39,7 @@ public:
         }
     }
 
+    // Met à jour l’animation en passant à la frame suivante si nécessaire.
     void update(float dt)
     {
         _timer += dt;
@@ -43,6 +52,7 @@ public:
         }
     }
 
+    // Dessine la frame actuelle en plein écran sans décalage.
     void drawFullscreen(int width, int height)
     {
         if (_frames.empty())
@@ -58,6 +68,7 @@ public:
             WHITE);
     }
 
+    // Dessine la frame actuelle en plein écran avec un décalage pour effet de parallaxe.
     void drawFullscreen(int w, int h, float offsetX, float offsetY)
     {
         Texture2D &tex = *_frames[_currentFrame];

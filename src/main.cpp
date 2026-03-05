@@ -4,8 +4,7 @@
 #include "utils/GameContext.hpp"
 #include "states/MenuState.hpp"
 
-int main()
-{
+int main(void){
     // Initialisation raylib
     InitWindow(1280, 720, "Tower Defense");
     SetTargetFPS(60);

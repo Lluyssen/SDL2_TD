@@ -6,14 +6,18 @@
 #include "animation/UIAnimation.hpp"
 #include <math.h>
 
+// Représente un bouton interactif avec animations d’entrée et de survol.
 class UIButton
 {
 private:
+    // Rectangle de base et rectangle actuel utilisé pour le dessin.
     Rectangle _baseRect;
     Rectangle _drawRect;
 
+    // Texte affiché sur le bouton.
     std::string _text;
 
+    // État interne pour hover, entrée, scale et profondeur.
     bool _hover = false;
     bool _entered = false;
     float _scale = 1.0f;
@@ -22,44 +26,50 @@ private:
     float _targetDepth = 0.0f;
     float _breathTime = 0.0f;
 
+    // Animations optionnelles pour l’entrée et le survol.
     std::unique_ptr<UIAnimation> _enterAnim;
     std::unique_ptr<UIAnimation> _hoverAnim;
 
 public:
+    // Constructeur avec texte et rectangle.
     UIButton(const std::string &text, Rectangle rect)
         : _baseRect(rect), _drawRect(rect), _text(text)
     {
     }
 
+    // Assigne l’animation d’entrée.
     void setEnterAnimation(std::unique_ptr<UIAnimation> anim)
     {
         _enterAnim = std::move(anim);
     }
 
+    // Assigne l’animation de survol.
     void setHoverAnimation(std::unique_ptr<UIAnimation> anim)
     {
         _hoverAnim = std::move(anim);
     }
 
-    void resetAnimations()
-    {
+    // Réinitialise l’animation d’entrée.
+    void resetAnimations(void)    {
         _entered = false;
 
         if (_enterAnim)
             _enterAnim->reset();
     }
 
+    // Vérifie si l’animation d’entrée est terminée.
     bool enterFinished() const
     {
         return _entered;
     }
 
-    bool finishEnter()
-    {
+    // Marque l’animation d’entrée comme terminée.
+    bool finishEnter(void)    {
         _entered = true;
         return true;
     }
 
+    // Met à jour l’état du bouton, la scale, la profondeur et détecte le clic.
     bool update(float dt, bool someoneHover)
     {
         Vector2 mouse = GetMousePosition();
@@ -79,7 +89,7 @@ public:
         }
         else
         {
-            // respiration
+            // Respiration du bouton pour effet subtil.
             float breath = sinf(_breathTime * 2.0f) * 0.02f;
 
             _targetScale = 1.0f + breath;
@@ -87,7 +97,7 @@ public:
         }
         _depth += (_targetDepth - _depth) * 10.0f * dt;
 
-        // interpolation douce
+        // Interpolation douce pour scale.
         _scale += (_targetScale - _scale) * 10.0f * dt;
 
         float cx = _baseRect.x + _baseRect.width * 0.5f;
@@ -108,16 +118,16 @@ public:
         return false;
     }
 
-    void draw()
-    {
+    // Dessine le bouton en utilisant l’animation ou le rendu par défaut.
+    void draw(void)    {
         if (!_entered && _enterAnim)
             _enterAnim->draw(*this);
         else
             drawDefault();
     }
 
-    void drawDefault()
-    {
+    // Dessin par défaut du bouton avec bordure, ombre et texte centré.
+    void drawDefault(void)    {
         DrawRectangleRounded(
             Rectangle{
                 _drawRect.x + 4,
@@ -145,21 +155,24 @@ public:
             _hover ? YELLOW : WHITE);
     }
 
-    Rectangle &rect()
-    {
+    // Retourne le rectangle de dessin actuel.
+    Rectangle &rect(void)    {
         return _drawRect;
     }
 
+    // Retourne le rectangle de base.
     const Rectangle &baseRect() const
     {
         return _baseRect;
     }
 
+    // Retourne le texte du bouton.
     const std::string &text() const
     {
         return _text;
     }
 
+    // Indique si la souris survole le bouton.
     bool hover() const
     {
         return _hover;

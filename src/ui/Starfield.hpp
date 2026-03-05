@@ -1,104 +1,82 @@
 #pragma once
+#include "../../ecs/ECS.hpp"
 #include "raylib.h"
 #include <vector>
 #include <math.h>
 
-struct Star
+// Composant pour une étoile
+struct StarData
 {
-    Vector2 pos;
-    Vector2 vel;
     float size;
     float phase;
     float speed;
 };
 
-class Starfield
+struct Position
+{
+    float x = 0.f, y = 0.f;
+};
+struct Velocity
+{
+    float vx = 0.f, vy = 0.f;
+};
+
+// Alias pour faciliter les systèmes
+using StarComponents = TypeList<Position, Velocity, StarData>;
+
+// Système pour mettre à jour et dessiner les étoiles
+class StarfieldSystem : public SystemTypeList<StarComponents>
 {
 private:
-    std::vector<Star> _far;
-    std::vector<Star> _mid;
-    std::vector<Star> _near;
+    int screenWidth;
+    int screenHeight;
 
 public:
-    void init(int w, int h)
+    StarfieldSystem(int w, int h) : screenWidth(w), screenHeight(h) {}
+
+    void update(double dt, Registry<StarComponents> &reg) override
     {
-        auto spawn = [&](std::vector<Star> &stars, int count, float sizeMin, float sizeMax)
-        {
-            for (int i = 0; i < count; i++)
-            {
-                stars.push_back({{(float)GetRandomValue(0, w),
-                                  (float)GetRandomValue(0, h)},
+        // Mise à jour de position et phase
+        reg.template forEachEntityWith<StarComponents>([&](Entity, Position &pos, Velocity &vel, StarData &s) {
+            s.phase += dt * 2.0f;
+            pos.x += vel.vx * dt;
+            pos.y += vel.vy * dt;
 
-                                 {(float)GetRandomValue(-20, 20),
-                                  (float)GetRandomValue(-20, 20)},
-
-                                 GetRandomValue(10, 30) / 10.0f,
-                                 GetRandomValue(0, 628) / 100.0f});
-            }
-        };
-
-        spawn(_far, 80, 1.0f, 2.0f);
-        spawn(_mid, 40, 2.0f, 3.0f);
-        spawn(_near, 20, 3.0f, 5.0f);
+            if (pos.x < 0) pos.x += screenWidth;
+            if (pos.x > screenWidth) pos.x -= screenWidth;
+            if (pos.y < 0) pos.y += screenHeight;
+            if (pos.y > screenHeight) pos.y -= screenHeight; });
     }
 
-    void update(float dt, int w, int h)
-    {
-        auto updateLayer = [&](std::vector<Star> &stars, float speed)
-        {
-            for (auto &s : stars)
-            {
-                s.phase += dt * 2.0f;
-
-                s.pos.x += s.vel.x * dt;
-                s.pos.y += s.vel.y * dt;
-
-                if (s.pos.x < 0)
-                    s.pos.x += w;
-                if (s.pos.x > w)
-                    s.pos.x -= w;
-
-                if (s.pos.y < 0)
-                    s.pos.y += h;
-                if (s.pos.y > h)
-                    s.pos.y -= h;
-            }
-        };
-
-        updateLayer(_far, 10);
-        updateLayer(_mid, 20);
-        updateLayer(_near, 40);
-    }
-
-    void draw(int w, int h)
+    void draw(Registry<StarComponents> &reg)
     {
         Vector2 mouse = GetMousePosition();
+        float nx = (mouse.x / screenWidth) - 0.5f;
+        float ny = (mouse.y / screenHeight) - 0.5f;
 
-        float nx = (mouse.x / w) - 0.5f;
-        float ny = (mouse.y / h) - 0.5f;
+        reg.template forEachEntityWith<StarComponents>([&](Entity, Position &pos, Velocity &vel, StarData &s) {
+            float twinkle = (sinf(s.phase * 3.0f) + 1.0f) * 0.5f;
+            float brightness = 160 + twinkle * 80;
 
-        auto drawLayer = [&](std::vector<Star> &stars, float strength)
-        {
-            for (auto &s : stars)
-            {
-                float twinkle = (sinf(s.phase * 3.0f) + 1.0f) * 0.5f;
+            Color c{(unsigned char)brightness, (unsigned char)brightness, (unsigned char)(brightness + 20), 255};
+            float size = s.size + twinkle * 0.4f;
 
-                float brightness = 160 + twinkle * 80;
-
-                Color c{
-                    (unsigned char)brightness,
-                    (unsigned char)brightness,
-                    (unsigned char)(brightness + 20),
-                    255};
-
-                float size = s.size + twinkle * 0.4f;
-
-                DrawCircleV(s.pos, size, c);
-            }
-        };
-
-        drawLayer(_far, 5);
-        drawLayer(_mid, 15);
-        drawLayer(_near, 30);
+            DrawCircleV({pos.x + nx * 30, pos.y + ny * 30}, size, c); });
     }
+
+    const char *name() const override { return "StarfieldSystem"; }
 };
+
+// Fonction utilitaire pour créer un champ d’étoiles
+inline void spawnStarfield(Registry<StarComponents> &reg, int count, int w, int h, float sizeMin, float sizeMax)
+{
+    for (int i = 0; i < count; i++)
+    {
+        Entity e = reg.create();
+        reg.add<Position>(e, {(float)GetRandomValue(0, w), (float)GetRandomValue(0, h)});
+        reg.add<Velocity>(e, {(float)GetRandomValue(-20, 20), (float)GetRandomValue(-20, 20)});
+        reg.add<StarData>(e, {GetRandomValue((int)(sizeMin * 10), (int)(sizeMax * 10)) / 10.0f,
+                              GetRandomValue(0, 628) / 100.0f,
+                              0.0f});
+    }
+}

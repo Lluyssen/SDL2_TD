@@ -5,25 +5,33 @@
 #include <math.h>
 #include "raymath.h"
 
+// Animation d’entrée de bouton avec effet de pixels révélés progressivement.
 class PixelRevealAnimation : public UIAnimation
 {
 private:
+    // Timer interne pour gérer la progression de l’animation.
     float _timer = 0.0f;
-    float _duration = 0.8f;
 
+    // Durée totale de l’animation en secondes.
+    float _duration = 1.5f;
+
+    // Taille d’un bloc de pixels à dessiner.
     int _blockSize = 12;
 
 public:
+    // Réinitialise l’animation pour recommencer.
     void reset() override
     {
         _timer = 0.0f;
     }
 
+    // Met à jour le timer de l’animation.
     void update(UIButton &btn, float dt) override
     {
         _timer += dt;
     }
 
+    // Vérifie si un point est à l’intérieur d’un rectangle arrondi.
     bool insideRounded(Rectangle r, float x, float y, float radius)
     {
         float left = r.x + radius;
@@ -43,6 +51,7 @@ public:
         return (dx * dx + dy * dy) <= radius * radius;
     }
 
+    // Dessine l’animation pixelisée du bouton avec texte centré.
     void draw(UIButton &btn) override
     {
         Rectangle r = btn.rect();
@@ -63,6 +72,7 @@ public:
 
         float radius = r.height * 0.3f;
 
+        // Parcourt chaque bloc et dessine ceux révélés selon la progression.
         for (int y = 0; y < rows; y++)
         {
             for (int x = 0; x < cols; x++)
@@ -88,7 +98,7 @@ public:
             }
         }
 
-        // texte visible pendant l'animation
+        // Dessine le texte du bouton centré et coloré selon hover.
         int fs = 28;
         int tw = MeasureText(btn.text().c_str(), fs);
 
@@ -99,6 +109,7 @@ public:
             fs,
             btn.hover() ? YELLOW : WHITE);
 
+        // Marque le bouton comme terminé lorsque l’animation est finie.
         if (progress >= 1.0f)
             btn.finishEnter();
     }
