@@ -2,7 +2,7 @@
 
 #include "../utils/StateManager.hpp"
 #include "raylib.h"
-#include "menu/level/GameState.hpp"
+#include "GameState.hpp"
 #include "../ui/Starfield.hpp"
 #include "menu/MenuBackground.hpp"
 #include "menu/MenuButtons.hpp"

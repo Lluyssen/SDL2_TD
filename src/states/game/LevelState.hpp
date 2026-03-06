@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../../../utils/StateManager.hpp"
-#include "../../MenuState.hpp"
+#include "../../utils/StateManager.hpp"
+#include "../MenuState.hpp"
 #include "raylib.h"
 #include <vector>
 
