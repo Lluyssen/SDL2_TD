@@ -9,9 +9,10 @@ int main(void)
     // Initialisation raylib
     GameContext context;
 
-    context.setResolution(1280, 720);
+    context.setResolution(1920, 1080);
 
     InitWindow(context.getWidth(), context.getHeight(), "Tower Defense");
+    SetExitKey(KEY_NULL);
     SetTargetFPS(60);
     InitAudioDevice();
 

@@ -14,13 +14,12 @@
 class MenuState : public IGameState
 {
 private:
-
     // Phases internes du menu
     enum class Phase
     {
-        Loading,   // attente avant l’apparition de l’UI
-        UIReveal,  // animation d'entrée des boutons
-        Idle       // menu interactif
+        Loading,  // attente avant l’apparition de l’UI
+        UIReveal, // animation d'entrée des boutons
+        Idle      // menu interactif
     };
 
     Phase _phase = Phase::Loading;
@@ -47,7 +46,6 @@ private:
     const int _bgTotalFrames = 41;
 
 public:
-
     MenuState() = default;
 
     // Initialisation de l’état
@@ -106,9 +104,10 @@ public:
             return;
         }
 
-        dt = std::min(dt, 0.05f); // limite les gros dt (pause/debug)
+        if (dt > 0.05f)
+            dt = 0.05f;
 
-        _background.update(dt);
+        //_background.update(dt);
         ctx.updateMusic();
         _npc.update(dt);
 
@@ -180,7 +179,7 @@ public:
             DrawTexturePro(_loadingTexture, src, dst, {0, 0}, 0, WHITE);
 
             float progress = (float)_bgFramesLoaded / (float)_bgTotalFrames;
-            progress = std::clamp(progress, 0.0f, 1.0f);
+            progress = (progress < 0) ? 0 : (progress > 1) ? 1 : progress;
 
             int barWidth = 400;
             int barHeight = 20;

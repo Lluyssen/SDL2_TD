@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <memory>
+#include <functional>
 
 #include "GameContext.hpp"
 class StateManager;
@@ -34,45 +35,67 @@ class StateManager
 {
 private:
     GameContext &_context;
+
     std::vector<std::unique_ptr<IGameState>> _stack;
+    std::vector<std::function<void()>> _pending;
 
 public:
-    explicit StateManager(GameContext &ctx) : _context(ctx) {}
-
-    virtual ~StateManager() = default;
-
-    // Remplace tous les états par un nouveau
-    template <typename T, typename... Args>
-    void changeState(Args &&...args)
+    explicit StateManager(GameContext &ctx) : _context(ctx)
     {
-        while (!_stack.empty())
-        {
-            _stack.back()->onExit(*this);
-            _stack.pop_back();
-        }
-        pushState<T>(std::forward<Args>(args)...);
+        _stack.reserve(8);
+        _pending.reserve(8);
     }
 
-    // Ajoute un état au-dessus du stack
+    ~StateManager(void) = default;
+
+    GameContext &getContext()
+    {
+        return _context;
+    }
+
     template <typename T, typename... Args>
     void pushState(Args &&...args)
     {
-        auto state = std::make_unique<T>(std::forward<Args>(args)...);
-        state->onEnter(*this);
-        _stack.push_back(std::move(state));
+        _pending.emplace_back(
+            [this, args...]()
+            {
+                auto state = std::make_unique<T>(args...);
+                state->onEnter(*this);
+                _stack.push_back(std::move(state));
+            });
     }
 
-    // Supprime l'état courant
     void popState(void)
     {
-        if (_stack.empty())
-            return;
+        _pending.emplace_back(
+            [this]()
+            {
+                if (_stack.empty())
+                    return;
 
-        _stack.back()->onExit(*this);
-        _stack.pop_back();
+                _stack.back()->onExit(*this);
+                _stack.pop_back();
+            });
     }
 
-    // Update du stack (du haut vers le bas)
+    template <typename T, typename... Args>
+    void changeState(Args &&...args)
+    {
+        _pending.emplace_back(
+            [this, args...]()
+            {
+                while (!_stack.empty())
+                {
+                    _stack.back()->onExit(*this);
+                    _stack.pop_back();
+                }
+
+                auto state = std::make_unique<T>(args...);
+                state->onEnter(*this);
+                _stack.push_back(std::move(state));
+            });
+    }
+
     void update(float dt)
     {
         for (int i = (int)_stack.size() - 1; i >= 0; --i)
@@ -82,39 +105,27 @@ public:
             if (!_stack[i]->allowUpdateBelow())
                 break;
         }
+
+        applyPending();
     }
 
-    // Render du stack (du bas vers le haut)
     void render(void)
     {
-        for (size_t i = 0; i < _stack.size(); ++i)
-        {
-            _stack[i]->render(*this);
+        int start = 0;
 
+        for (int i = (int)_stack.size() - 1; i >= 0; --i)
+        {
             if (!_stack[i]->allowRenderBelow())
+            {
+                start = i;
                 break;
+            }
         }
+
+        for (size_t i = start; i < _stack.size(); ++i)
+            _stack[i]->render(*this);
     }
 
-    // Accès au contexte global du jeu
-    GameContext &getContext(void)
-    {
-        return _context;
-    }
-
-    // Récupérer un état spécifique dans le stack
-    template <typename T>
-    T *getState(void)
-    {
-        for (auto &s : _stack)
-        {
-            if (auto ptr = dynamic_cast<T *>(s.get()))
-                return ptr;
-        }
-        return nullptr;
-    }
-
-    // Accès rapide à l'état courant
     IGameState *top(void)
     {
         if (_stack.empty())
@@ -122,13 +133,34 @@ public:
         return _stack.back().get();
     }
 
-    // Vide entièrement le stack
+    template <typename T>
+    T *getState()
+    {
+        for (auto &s : _stack)
+        {
+            if (auto ptr = dynamic_cast<T *>(s.get()))
+                return ptr;
+        }
+
+        return nullptr;
+    }
+
     void clear(void)
     {
-        while (!_stack.empty())
-        {
-            _stack.back()->onExit(*this);
-            _stack.pop_back();
-        }
+        _pending.emplace_back( [this]() {
+                while (!_stack.empty())
+                {
+                    _stack.back()->onExit(*this);
+                    _stack.pop_back();
+                }
+            });
+    }
+
+private:
+    void applyPending(void)
+    {
+        for (auto &cmd : _pending)
+            cmd();
+        _pending.clear();
     }
 };
