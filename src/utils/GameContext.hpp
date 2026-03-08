@@ -5,11 +5,11 @@
 #include <unordered_map>
 #include "MusicManager.hpp"
 
-
 /*
     Contexte global partagé par tous les states.
     Permet d'accéder aux ressources du jeu.
 */
+
 class GameContext
 {
 private:

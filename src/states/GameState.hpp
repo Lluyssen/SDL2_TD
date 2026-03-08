@@ -14,7 +14,7 @@ private:
 
     std::vector<LevelNode> _levels;
 
-    Vector2 _bgOffset{0, 0};
+    Vector2 _bgOffset {0, 0};
 
     PetitMenu _tooltip;
     Texture2D _tooltipTexture;
@@ -84,11 +84,11 @@ public:
 
             if (!tooltipVisible && CheckCollisionPointCircle(mouse, pos, 30))
             {
-                std::vector<std::string> lines =
-                    {
+                std::vector<std::string> lines = {
                         TextFormat("Level %d", node.id() + 1),
                         "Difficulty: Easy",
-                        "Reward: 200 gold"};
+                        "Reward: 200 gold"
+                    };
 
                 _tooltip.show({pos.x, pos.y - 40}, lines);
 

@@ -4,15 +4,19 @@
 #include "utils/GameContext.hpp"
 #include "states/MenuState.hpp"
 
-int main(void){
+int main(void)
+{
     // Initialisation raylib
-    InitWindow(1280, 720, "Tower Defense");
+    GameContext context;
+
+    context.setResolution(1280, 720);
+
+    InitWindow(context.getWidth(), context.getHeight(), "Tower Defense");
     SetTargetFPS(60);
     InitAudioDevice();
 
     // Contexte global du jeu
-    GameContext context;
-
+    
     // Manager de states
     StateManager stateManager(context);
 
