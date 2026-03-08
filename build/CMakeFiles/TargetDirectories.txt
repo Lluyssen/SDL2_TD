@@ -1,3 +1,0 @@
-/home/lino/Desktop/Code/SDL2_TD/build/CMakeFiles/SDL2_TD.dir
-/home/lino/Desktop/Code/SDL2_TD/build/CMakeFiles/edit_cache.dir
-/home/lino/Desktop/Code/SDL2_TD/build/CMakeFiles/rebuild_cache.dir
