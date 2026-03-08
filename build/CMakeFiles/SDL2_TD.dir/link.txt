@@ -1,0 +1,1 @@
+/usr/bin/c++ CMakeFiles/SDL2_TD.dir/src/main.cpp.o -o SDL2_TD  -Wl,-rpath,/usr/local/lib /usr/local/lib/libraylib.a -L/usr/local/lib -lraylib 
