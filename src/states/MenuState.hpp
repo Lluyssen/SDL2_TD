@@ -17,13 +17,13 @@ private:
     // Phases internes du menu
     enum class Phase
     {
-        Loading,  // attente avant l’apparition de l’UI
-        UIReveal, // animation d'entrée des boutons
-        Idle      // menu interactif
+        Loading,
+        UIReveal,
+        Idle
     };
 
     Phase _phase = Phase::Loading;
-    float _timer = 0;
+    float _timer = 0.f;
 
     // Sous-systèmes du menu
     MenuBackground _background;
@@ -31,7 +31,7 @@ private:
     MenuTitle _title;
     MenuNPC _npc;
 
-    // ECS utilisé pour le champ d'étoiles (3 couches de profondeur)
+    // ECS étoiles
     Registry<StarComponents> _starRegistry;
     std::unique_ptr<StarfieldSystem> _farStars;
     std::unique_ptr<StarfieldSystem> _midStars;
@@ -39,37 +39,40 @@ private:
 
     // Loading screen
     Texture2D _loadingTexture{};
-    bool _loading = true;
-
-    // Chargement progressif des frames du background
     int _bgFramesLoaded = 0;
-    const int _bgTotalFrames = 41;
+    static constexpr int BG_TOTAL_FRAMES = 41;
+
+    // Constantes pour la barre de progression
+    static constexpr float BAR_WIDTH_PERCENT = 0.4f;
+    static constexpr float BAR_HEIGHT_PERCENT = 0.03f;
+    static constexpr float BAR_Y_POS_PERCENT = 0.85f;
+
+    // Enum pour les boutons
+    enum class ButtonID
+    {
+        Play = 0,
+        Options = 1,
+        Quit = 2
+    };
 
 public:
     MenuState() = default;
 
-    // Initialisation de l’état
     void onEnter(StateManager &sm) override
     {
         auto &ctx = sm.getContext();
 
-        // Image de l'écran de chargement
         _loadingTexture = LoadTexture("../assets/ui/loading.png");
-
-        _loading = true;
         _bgFramesLoaded = 0;
 
         int w = ctx.getWidth();
         int h = ctx.getHeight();
 
-        // Initialisation UI et musique
         _buttons.init(ctx);
         _npc.init();
         ctx.initMusic("../assets/audio/menu_music.mp3");
 
-        // Initialisation ECS étoiles
         _starRegistry = Registry<StarComponents>();
-
         _farStars = std::make_unique<StarfieldSystem>(w, h);
         _midStars = std::make_unique<StarfieldSystem>(w, h);
         _nearStars = std::make_unique<StarfieldSystem>(w, h);
@@ -79,133 +82,102 @@ public:
         spawnStarfield(_starRegistry, 20, w, h, 3.f, 5.f);
 
         _phase = Phase::Loading;
-        _timer = 0;
+        _timer = 0.f;
     }
 
-    // Mise à jour logique du menu
     void update(StateManager &sm, float dt) override
     {
         auto &ctx = sm.getContext();
+        if (dt > 0.05f)
+            dt = 0.05f; // Clamp global pour stabilité
 
-        // Chargement progressif du background pour éviter un freeze
-        if (_loading)
+        // Chargement progressif du background (2 frames par update pour fluidité)
+        if (_bgFramesLoaded < BG_TOTAL_FRAMES)
         {
-            if (_bgFramesLoaded < _bgTotalFrames)
-            {
-                _background.loadFrame(ctx, "../assets/ui/bg/frame", _bgFramesLoaded);
-                _bgFramesLoaded++;
-            }
-            else
-            {
+            for (int i = 0; i < 2 && _bgFramesLoaded < BG_TOTAL_FRAMES; ++i)
+                _background.loadFrame(ctx, "../assets/ui/bg/frame", _bgFramesLoaded++);
+            if (_bgFramesLoaded == BG_TOTAL_FRAMES)
                 _background.finalize();
-                _loading = false;
-            }
+
+            // Mettre à jour les boutons pendant loading pour PixelReveal/ScaleHover
+            _buttons.update(dt);
+
+            // Fond animé pendant loading
+            _background.update(dt);
 
             return;
         }
 
-        if (dt > 0.05f)
-            dt = 0.05f;
-
-        //_background.update(dt);
+        // Fond et musique
+        _background.update(dt);
         ctx.updateMusic();
         _npc.update(dt);
 
-        // Mise à jour des étoiles
+        // Étoiles
         _farStars->update(dt, _starRegistry);
         _midStars->update(dt, _starRegistry);
         _nearStars->update(dt, _starRegistry);
 
-        // Machine d’état du menu
+        // Machine d’état
         switch (_phase)
         {
         case Phase::Loading:
-
             _timer += dt;
-
             if (_timer > 0.2f)
             {
-                _buttons.resetAnimations();
+                _buttons.resetAnimations(); // prépare PixelReveal
                 _phase = Phase::UIReveal;
             }
-
             break;
 
         case Phase::UIReveal:
-
-            _buttons.update(dt);
-
+            _buttons.update(dt); // continue PixelReveal
             if (_buttons.enterFinished())
                 _phase = Phase::Idle;
-
             break;
 
         case Phase::Idle:
         {
-            int action = _buttons.update(dt);
-
+            int action = _buttons.update(dt); // ScaleHover + interaction
             if (action >= 0)
-                activate(sm, action);
+                activate(sm, static_cast<ButtonID>(action));
         }
         break;
         }
     }
 
-    // Rendu graphique
     void render(StateManager &sm) override
     {
         auto &ctx = sm.getContext();
-
         int w = ctx.getWidth();
         int h = ctx.getHeight();
 
         // Écran de chargement
-        if (_loading)
+        if (_bgFramesLoaded < BG_TOTAL_FRAMES)
         {
             ClearBackground(BLACK);
 
-            Rectangle src{
-                0,
-                0,
-                (float)_loadingTexture.width,
-                (float)_loadingTexture.height};
+            Rectangle src{0.f, 0.f, (float)_loadingTexture.width, (float)_loadingTexture.height};
+            Rectangle dst{0.f, 0.f, (float)w, (float)h};
+            DrawTexturePro(_loadingTexture, src, dst, {0, 0}, 0.f, WHITE);
 
-            Rectangle dst{
-                0,
-                0,
-                (float)w,
-                (float)h};
+            float progress = std::clamp((float)_bgFramesLoaded / BG_TOTAL_FRAMES, 0.f, 1.f);
 
-            DrawTexturePro(_loadingTexture, src, dst, {0, 0}, 0, WHITE);
-
-            float progress = (float)_bgFramesLoaded / (float)_bgTotalFrames;
-            progress = (progress < 0) ? 0 : (progress > 1) ? 1
-                                                           : progress;
-
-            float barWidthPercent = 0.4f;   // 40% de la largeur de l'écran
-            float barHeightPercent = 0.03f; // 3% de la hauteur de l'écran
-
-            int barWidth = (int)(w * barWidthPercent);
-            int barHeight = (int)(h * barHeightPercent);
-
-            // Positionnement centré
+            int barWidth = (int)(w * BAR_WIDTH_PERCENT);
+            int barHeight = (int)(h * BAR_HEIGHT_PERCENT);
             int x = w / 2 - barWidth / 2;
-            int y = (int)(h * 0.85f); // 75% de la hauteur de l'écran, descend la barre
+            int y = (int)(h * BAR_Y_POS_PERCENT);
 
-            // Barre de fond
             DrawRectangle(x, y, barWidth, barHeight, DARKGRAY);
-            // Barre de progression
             DrawRectangle(x, y, (int)(barWidth * progress), barHeight, GOLD);
-            // Contour
             DrawRectangleLines(x, y, barWidth, barHeight, WHITE);
 
-            // Texte % centré
-            DrawText(
-                TextFormat("Loading %d%%", (int)(progress * 100)),
-                x + barWidth / 2 - MeasureText(TextFormat("Loading %d%%", (int)(progress * 100)), 20) / 2,
-                y + barHeight + 10, // juste en dessous de la barre
-                20,
-                WHITE);
+            const int percent = (int)(progress * 100);
+            const std::string text = TextFormat("Loading %d%%", percent);
+            int textWidth = MeasureText(text.c_str(), 20);
+            DrawText(text.c_str(), x + barWidth / 2 - textWidth / 2, y + barHeight + 10, 20, WHITE);
+
+            _background.draw(w, h); // fond partiellement chargé
 
             return;
         }
@@ -225,22 +197,21 @@ public:
         _npc.draw(h);
     }
 
-    // Action déclenchée par un bouton
-    void activate(StateManager &sm, int id)
+    void activate(StateManager &sm, ButtonID id)
     {
         switch (id)
         {
-        case 0:
+        case ButtonID::Play:
             sm.changeState<GameState>();
             break;
-
-        case 2:
+        case ButtonID::Quit:
             CloseWindow();
+            break;
+        default:
             break;
         }
     }
 
-    // Nettoyage lors de la sortie de l’état
     void onExit(StateManager &) override
     {
         UnloadTexture(_loadingTexture);
