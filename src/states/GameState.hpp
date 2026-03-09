@@ -14,16 +14,17 @@ private:
     AnimatedSprite _lockAnim;
 
     std::vector<LevelNode> _levels;
-
-    Vector2 _bgOffset{0, 0};
+    Vector2 _bgOffset{0.f, 0.f};
 
     PetitMenu _tooltip;
-    Texture2D _tooltipTexture;
+    Texture2D _tooltipTexture{};
 
-    float _zoom = 1.05f;
+    static constexpr float ZOOM = 1.05f;
+    static constexpr float PARALLAX_AMOUNT = 40.f;
+    static constexpr float PARALLAX_SPEED = 4.f;
 
     // conversion map -> écran
-    Vector2 worldToScreen(Vector2 world, int w, int h, float drawW, float drawH)
+    Vector2 worldToScreen(Vector2 world, int w, int h, float drawW, float drawH) const
     {
         float scaleX = drawW / (float)_mapTexture.width;
         float scaleY = drawH / (float)_mapTexture.height;
@@ -39,19 +40,18 @@ public:
         auto &ctx = sm.getContext();
 
         _mapTexture = LoadTexture("../assets/ui/map.png");
-
         _lockAnim.loadSheet(ctx, "../assets/ui/flag/Graysprite.png", 6, 0.2f);
 
         _tooltipTexture = LoadTexture("../assets/ui/papyrus.png");
         _tooltip.init(_tooltipTexture);
 
-        _levels =
-            {
-                {0, {160, 120}},
-                {1, {700, 650}},
-                {2, {1100, 250}},
-                {3, {1020, 740}},
-                {4, {300, 700}}};
+        // Définition des niveaux
+        _levels = {
+            {0, {160, 120}},
+            {1, {700, 650}},
+            {2, {1100, 250}},
+            {3, {1020, 740}},
+            {4, {300, 700}}};
 
         for (auto &n : _levels)
             n.init(ctx);
@@ -60,18 +60,13 @@ public:
     void update(StateManager &sm, float dt) override
     {
         auto &ctx = sm.getContext();
+        dt = std::min(dt, 0.05f); // clamp dt pour stabilité
 
         Vector2 mouse = GetMousePosition();
-
-        int unlocked = ctx.gethighestUnlockedLevel();
-
-        ctx.updateMusic();
-
         int w = ctx.getWidth();
         int h = ctx.getHeight();
-        float drawW = w * _zoom;
-        float drawH = h * _zoom;
-
+        float drawW = w * ZOOM;
+        float drawH = h * ZOOM;
         bool tooltipVisible = false;
 
         if (IsKeyPressed(KEY_ESCAPE))
@@ -80,10 +75,12 @@ public:
             return;
         }
 
+        int unlocked = ctx.gethighestUnlockedLevel();
+
+        // Mise à jour des nodes
         for (auto &node : _levels)
         {
             bool unlockedNode = node.id() <= unlocked;
-
             Vector2 pos = worldToScreen(node.position(), w, h, drawW, drawH);
 
             if (node.update(dt, mouse, pos, unlockedNode))
@@ -95,9 +92,7 @@ public:
                     TextFormat("Level %d", node.id() + 1),
                     "Difficulty: Easy",
                     "Reward: 200 gold"};
-
                 _tooltip.show({pos.x, pos.y - 40}, lines);
-
                 tooltipVisible = true;
             }
         }
@@ -105,51 +100,42 @@ public:
         if (!tooltipVisible)
             _tooltip.hide();
 
-        // parallaxe souris
+        // Parallaxe souris
         float nx = (mouse.x / w) - 0.5f;
         float ny = (mouse.y / h) - 0.5f;
-
-        _bgOffset.x += (nx * 40.f - _bgOffset.x) * 4.f * dt;
-        _bgOffset.y += (ny * 40.f - _bgOffset.y) * 4.f * dt;
+        _bgOffset.x += (-nx * PARALLAX_AMOUNT - _bgOffset.x) * PARALLAX_SPEED * dt;
+        _bgOffset.y += (-ny * PARALLAX_AMOUNT - _bgOffset.y) * PARALLAX_SPEED * dt;
 
         _lockAnim.update(dt);
+        ctx.updateMusic();
     }
 
     void render(StateManager &sm) override
     {
         auto &ctx = sm.getContext();
-
         int w = ctx.getWidth();
         int h = ctx.getHeight();
 
-        float zoom = 1.05f;
-
-        float drawW = w * zoom;
-        float drawH = h * zoom;
+        float drawW = w * ZOOM;
+        float drawH = h * ZOOM;
 
         ClearBackground(BLACK);
 
-        Rectangle src{
-            0, 0,
-            (float)_mapTexture.width,
-            (float)_mapTexture.height};
-
+        // Dessin de la map
+        Rectangle src{0.f, 0.f, (float)_mapTexture.width, (float)_mapTexture.height};
         Rectangle dst{
             (w - drawW) * 0.5f + _bgOffset.x,
             (h - drawH) * 0.5f + _bgOffset.y,
             drawW,
             drawH};
-
-        DrawTexturePro(_mapTexture, src, dst, {0, 0}, 0, WHITE);
+        DrawTexturePro(_mapTexture, src, dst, {0.f, 0.f}, 0.f, WHITE);
 
         int unlocked = ctx.gethighestUnlockedLevel();
 
         for (auto &node : _levels)
         {
             bool unlockedNode = node.id() <= unlocked;
-
             Vector2 pos = worldToScreen(node.position(), w, h, drawW, drawH);
-
             node.draw(pos, _lockAnim, unlockedNode);
         }
 
