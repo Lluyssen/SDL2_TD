@@ -4,6 +4,8 @@
 #include "../ui/UIButton.hpp"
 #include "GameState.hpp"
 #include "MenuState.hpp"
+#include "../ui/animation/ScaleHoverAnimation.hpp"
+#include "../ui/animation/PixelRevealAnimation.hpp"
 
 class GameState;
 class MenuState;
@@ -51,6 +53,12 @@ public:
         _buttons.emplace_back(
             "Quit to Menu",
             Rectangle{(float)(w / 2 - bw / 2), (float)(startY + 160), (float)bw, (float)bh});
+
+        for (auto &b : _buttons)
+        {
+            b.setEnterAnimation(std::make_unique<PixelRevealAnimation>());
+            b.setHoverAnimation(std::make_unique<ScaleHoverAnimation>());
+        }
     }
 
     void update(StateManager &sm, float dt) override
@@ -78,7 +86,7 @@ public:
         DrawRectangle(0, 0, w, h, Color{0, 0, 0, 150});
         int tw = MeasureText(title, fs);
 
-        DrawText(title, w / 2 - tw / 2, h / 2 - 180, fs, WHITE);
+        DrawText(title, w / 2 - tw / 2, h / 2 - 180, fs, Color{255, 220, 120, 255});
 
         for (auto &b : _buttons)
             b.draw();

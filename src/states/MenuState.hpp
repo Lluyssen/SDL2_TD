@@ -179,23 +179,31 @@ public:
             DrawTexturePro(_loadingTexture, src, dst, {0, 0}, 0, WHITE);
 
             float progress = (float)_bgFramesLoaded / (float)_bgTotalFrames;
-            progress = (progress < 0) ? 0 : (progress > 1) ? 1 : progress;
+            progress = (progress < 0) ? 0 : (progress > 1) ? 1
+                                                           : progress;
 
-            int barWidth = 400;
-            int barHeight = 20;
+            float barWidthPercent = 0.4f;   // 40% de la largeur de l'écran
+            float barHeightPercent = 0.03f; // 3% de la hauteur de l'écran
 
+            int barWidth = (int)(w * barWidthPercent);
+            int barHeight = (int)(h * barHeightPercent);
+
+            // Positionnement centré
             int x = w / 2 - barWidth / 2;
-            int y = h / 2 + 240;
+            int y = (int)(h * 0.85f); // 75% de la hauteur de l'écran, descend la barre
 
-            // Barre de progression
+            // Barre de fond
             DrawRectangle(x, y, barWidth, barHeight, DARKGRAY);
-            DrawRectangle(x, y, barWidth * progress, barHeight, GOLD);
+            // Barre de progression
+            DrawRectangle(x, y, (int)(barWidth * progress), barHeight, GOLD);
+            // Contour
             DrawRectangleLines(x, y, barWidth, barHeight, WHITE);
 
+            // Texte % centré
             DrawText(
                 TextFormat("Loading %d%%", (int)(progress * 100)),
-                x + barWidth / 2 - 50,
-                y + 30,
+                x + barWidth / 2 - MeasureText(TextFormat("Loading %d%%", (int)(progress * 100)), 20) / 2,
+                y + barHeight + 10, // juste en dessous de la barre
                 20,
                 WHITE);
 

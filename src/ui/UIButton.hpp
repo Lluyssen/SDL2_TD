@@ -50,7 +50,8 @@ public:
     }
 
     // Réinitialise l’animation d’entrée.
-    void resetAnimations(void)    {
+    void resetAnimations(void)
+    {
         _entered = false;
 
         if (_enterAnim)
@@ -64,7 +65,8 @@ public:
     }
 
     // Marque l’animation d’entrée comme terminée.
-    bool finishEnter(void)    {
+    bool finishEnter(void)
+    {
         _entered = true;
         return true;
     }
@@ -119,7 +121,8 @@ public:
     }
 
     // Dessine le bouton en utilisant l’animation ou le rendu par défaut.
-    void draw(void)    {
+    void draw(void)
+    {
         if (!_entered && _enterAnim)
             _enterAnim->draw(*this);
         else
@@ -127,7 +130,8 @@ public:
     }
 
     // Dessin par défaut du bouton avec bordure, ombre et texte centré.
-    void drawDefault(void)    {
+    void drawDefault(void)
+    {
         DrawRectangleRounded(
             Rectangle{
                 _drawRect.x + 4,
@@ -142,7 +146,7 @@ public:
             0.3f,
             8,
             2,
-            _hover ? Color{255,220,120,255} : GRAY);
+            _hover ? Color{255, 220, 120, 255} : GRAY);
 
         int fs = 28;
         int tw = MeasureText(_text.c_str(), fs);
@@ -156,7 +160,8 @@ public:
     }
 
     // Retourne le rectangle de dessin actuel.
-    Rectangle &rect(void)    {
+    Rectangle &rect(void)
+    {
         return _drawRect;
     }
 
@@ -166,14 +171,19 @@ public:
         return _baseRect;
     }
 
+    void setBaseRect(Rectangle r)
+    {
+        _baseRect = r;
+    }
+
     // Retourne le texte du bouton.
-    const std::string &text() const
+    const std::string &text(void) const
     {
         return _text;
     }
 
     // Indique si la souris survole le bouton.
-    bool hover() const
+    bool hover(void) const
     {
         return _hover;
     }
