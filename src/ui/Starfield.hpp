@@ -1,5 +1,5 @@
 #pragma once
-#include "../../ECS/ECS.hpp"
+#include <ecs/ECS.hpp>
 #include "raylib.h"
 #include <vector>
 #include <math.h>
