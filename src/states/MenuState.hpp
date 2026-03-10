@@ -7,8 +7,8 @@
 #include <states/menu/MenuButtons.hpp>
 #include <states/menu/MenuNPC.hpp>
 #include <states/menu/MenuTitle.hpp>
-#include <utils/MusicManager.hpp>
-#include <utils/StateManager.hpp>
+#include <core/MusicManager.hpp>
+#include <core/StateManager.hpp>
 
 // État du menu principal : gère fond animé, étoiles, UI, PNJ et musique.
 class MenuState : public IGameState

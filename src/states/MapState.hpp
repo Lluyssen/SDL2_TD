@@ -1,6 +1,6 @@
 #pragma once
 
-#include <utils/StateManager.hpp>
+#include <core/StateManager.hpp>
 #include <states/PauseMenuState.hpp>
 
 

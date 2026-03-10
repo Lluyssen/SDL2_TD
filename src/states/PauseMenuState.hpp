@@ -1,6 +1,6 @@
 #pragma once
 
-#include <utils/StateManager.hpp>
+#include <core/StateManager.hpp>
 #include <ui/UIButton.hpp>
 #include <states/GameState.hpp>
 #include <states/MenuState.hpp>

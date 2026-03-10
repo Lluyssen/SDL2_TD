@@ -3,7 +3,7 @@
 #include "raylib.h"
 #include <ui/UIButton.hpp>
 #include <vector>
-#include <utils/GameContext.hpp>
+#include <core/GameContext.hpp>
 #include <ui/animation/ScaleHoverAnimation.hpp>
 #include <ui/animation/PixelRevealAnimation.hpp>
 #include <ui/PixelButton.hpp>

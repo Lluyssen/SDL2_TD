@@ -1,7 +1,7 @@
 #include "raylib.h"
 
-#include "utils/StateManager.hpp"
-#include "utils/GameContext.hpp"
+#include "core/StateManager.hpp"
+#include "core/GameContext.hpp"
 #include "states/MenuState.hpp"
 #include "states/SandBoxState.hpp"
 
