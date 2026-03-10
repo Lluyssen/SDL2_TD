@@ -5,7 +5,7 @@
 #include "states/MenuState.hpp"
 #include "states/SandBoxState.hpp"
 
-const bool START_IN_SANDBOX = true;
+const bool START_IN_SANDBOX = false;
 
 int main(void)
 {

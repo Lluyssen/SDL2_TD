@@ -31,6 +31,9 @@ private:
     std::unique_ptr<UIAnimation> _hoverAnim;
 
 public:
+
+    virtual ~UIButton(void) = default;
+
     // Constructeur avec texte et rectangle.
     UIButton(const std::string &text, Rectangle rect)
         : _baseRect(rect), _drawRect(rect), _text(text)
@@ -68,6 +71,7 @@ public:
     bool finishEnter(void)
     {
         _entered = true;
+        drawDefault();
         return true;
     }
 
@@ -130,7 +134,7 @@ public:
     }
 
     // Dessin par défaut du bouton avec bordure, ombre et texte centré.
-    void drawDefault(void)
+    virtual void drawDefault(void)
     {
         DrawRectangleRounded(
             Rectangle{
@@ -141,12 +145,14 @@ public:
             0.3f,
             8,
             Color{0, 0, 0, 80});
+        /*
         DrawRectangleRoundedLinesEx(
             _drawRect,
             0.3f,
             8,
             2,
             _hover ? Color{255, 220, 120, 255} : GRAY);
+        */
 
         int fs = 28;
         int tw = MeasureText(_text.c_str(), fs);
@@ -158,7 +164,6 @@ public:
             fs,
             _hover ? YELLOW : WHITE);
     }
-
     // Retourne le rectangle de dessin actuel.
     Rectangle &rect(void)
     {

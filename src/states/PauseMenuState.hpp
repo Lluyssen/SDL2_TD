@@ -13,7 +13,7 @@ class MenuState;
 class PauseMenuState : public IGameState
 {
 private:
-    std::vector<UIButton> _buttons;
+    std::vector<std::unique_ptr<UIButton>> _buttons;
     static constexpr const char *TITLE = "PAUSED";
     static constexpr int FONT_SIZE = 60;
     static constexpr int BUTTON_WIDTH = 260;
@@ -45,9 +45,9 @@ public:
                 (float)BUTTON_WIDTH,
                 (float)BUTTON_HEIGHT};
 
-            _buttons.emplace_back(labels[i], rect);
-            _buttons.back().setEnterAnimation(std::make_unique<PixelRevealAnimation>());
-            _buttons.back().setHoverAnimation(std::make_unique<ScaleHoverAnimation>());
+            _buttons.push_back(std::make_unique<UIButton>(labels[i], rect));
+            _buttons.back()->setEnterAnimation(std::make_unique<PixelRevealAnimation>());
+            _buttons.back()->setHoverAnimation(std::make_unique<ScaleHoverAnimation>());
         }
     }
 
@@ -60,7 +60,7 @@ public:
         for (size_t i = 0; i < _buttons.size(); ++i)
         {
             // update renvoie true si cliqué
-            if (_buttons[i].update(dt, false))
+            if (_buttons[i]->update(dt, false))
                 activate(sm, (int)i);
         }
 
@@ -81,7 +81,7 @@ public:
         DrawText(TITLE, w / 2 - tw / 2, h / 2 - 180, FONT_SIZE, Color{255, 220, 120, 255});
 
         for (auto &b : _buttons)
-            b.draw();
+            b->draw();
     }
 
     void activate(StateManager &sm, int id)
