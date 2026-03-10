@@ -3,6 +3,9 @@
 #include "utils/StateManager.hpp"
 #include "utils/GameContext.hpp"
 #include "states/MenuState.hpp"
+#include "states/SandBoxState.hpp"
+
+const bool START_IN_SANDBOX = true;
 
 int main(void)
 {
@@ -20,7 +23,10 @@ int main(void)
     StateManager stateManager(context);
 
     // Premier état
-    stateManager.pushState<MenuState>();
+    if (START_IN_SANDBOX)
+        stateManager.pushState<SandBoxState>();
+    else
+        stateManager.pushState<MenuState>();
 
     // Boucle principale
     while (!WindowShouldClose())
