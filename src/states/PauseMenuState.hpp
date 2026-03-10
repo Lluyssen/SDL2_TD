@@ -1,11 +1,11 @@
 #pragma once
 
-#include "../utils/StateManager.hpp"
-#include "../ui/UIButton.hpp"
-#include "GameState.hpp"
-#include "MenuState.hpp"
-#include "../ui/animation/ScaleHoverAnimation.hpp"
-#include "../ui/animation/PixelRevealAnimation.hpp"
+#include <utils/StateManager.hpp>
+#include <ui/UIButton.hpp>
+#include <states/GameState.hpp>
+#include <states/MenuState.hpp>
+#include <ui/animation/ScaleHoverAnimation.hpp>
+#include <ui/animation/PixelRevealAnimation.hpp>
 
 class GameState;
 class MenuState;

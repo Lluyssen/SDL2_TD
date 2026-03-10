@@ -1,14 +1,14 @@
 #pragma once
 
-#include "../utils/StateManager.hpp"
 #include "raylib.h"
-#include "GameState.hpp"
-#include "../ui/Starfield.hpp"
-#include "menu/MenuBackground.hpp"
-#include "menu/MenuButtons.hpp"
-#include "menu/MenuNPC.hpp"
-#include "menu/MenuTitle.hpp"
-#include "../utils/MusicManager.hpp"
+#include <ui/Starfield.hpp>
+#include <states/GameState.hpp>
+#include <states/menu/MenuBackground.hpp>
+#include <states/menu/MenuButtons.hpp>
+#include <states/menu/MenuNPC.hpp>
+#include <states/menu/MenuTitle.hpp>
+#include <utils/MusicManager.hpp>
+#include <utils/StateManager.hpp>
 
 // État du menu principal : gère fond animé, étoiles, UI, PNJ et musique.
 class MenuState : public IGameState

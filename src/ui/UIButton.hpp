@@ -3,7 +3,7 @@
 #include "raylib.h"
 #include <string>
 #include <memory>
-#include "animation/UIAnimation.hpp"
+#include <ui/animation/UIAnimation.hpp>
 #include <math.h>
 
 // Représente un bouton interactif avec animations d’entrée et de survol.

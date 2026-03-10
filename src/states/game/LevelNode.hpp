@@ -1,7 +1,7 @@
 #pragma once
 
 #include "raylib.h"
-#include "../../ui/AnimatedSprite.hpp"
+#include <ui/AnimatedSprite.hpp>
 #include <math.h>
 
 class GameContext;

@@ -1,12 +1,12 @@
 #pragma once
 
 #include "raylib.h"
-#include "../../ui/UIButton.hpp"
+#include <ui/UIButton.hpp>
 #include <vector>
-#include "../../utils/GameContext.hpp"
-#include "../../ui/animation/ScaleHoverAnimation.hpp"
-#include "../../ui/animation/PixelRevealAnimation.hpp"
-#include "../../ui/PixelButton.hpp"
+#include <utils/GameContext.hpp>
+#include <ui/animation/ScaleHoverAnimation.hpp>
+#include <ui/animation/PixelRevealAnimation.hpp>
+#include <ui/PixelButton.hpp>
 
 // Gère la création, l’animation et l’interaction des boutons du menu principal.
 class MenuButtons

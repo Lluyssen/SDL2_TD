@@ -1,7 +1,7 @@
 #pragma once
 
 #include "raylib.h"
-#include "../../ui/AnimatedSprite.hpp"
+#include <ui/AnimatedSprite.hpp>
 
 // Gère le fond animé du menu avec un effet de parallaxe basé sur la souris.
 class MenuBackground

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "UIAnimation.hpp"
-#include "../UIButton.hpp"
+#include <ui/UIButton.hpp>
 #include <math.h>
 #include "raymath.h"
 

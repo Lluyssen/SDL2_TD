@@ -1,11 +1,11 @@
 #pragma once
 
-#include "../utils/StateManager.hpp"
+#include <utils/StateManager.hpp>
 #include "raylib.h"
-#include "game/LevelNode.hpp"
-#include "../ui/petitMenu/PetitMenu.hpp"
-#include "PauseMenuState.hpp"
-#include "MapState.hpp"
+#include <states/game/LevelNode.hpp>
+#include <ui/petitMenu/PetitMenu.hpp>
+#include <states/PauseMenuState.hpp>
+#include <states/MapState.hpp>
 
 class GameState : public IGameState
 {

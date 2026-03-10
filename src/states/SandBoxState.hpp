@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../utils/StateManager.hpp"
-#include "PauseMenuState.hpp"
+#include <utils/StateManager.hpp>
+#include <states/PauseMenuState.hpp>
 
 
 class SandBoxState : public IGameState

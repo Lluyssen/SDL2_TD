@@ -1,7 +1,7 @@
 #pragma once
 
 #include "raylib.h"
-#include "UIButton.hpp"
+#include <ui/UIButton.hpp>
 #include <vector>
 
 class PixelButton : public UIButton

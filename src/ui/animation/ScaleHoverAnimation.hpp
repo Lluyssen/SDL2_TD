@@ -1,7 +1,7 @@
 #pragma once
 
 #include "UIAnimation.hpp"
-#include "../UIButton.hpp"
+#include <ui/UIButton.hpp>
 
 // Animation qui agrandit légèrement un bouton lorsque la souris le survole.
 class ScaleHoverAnimation : public UIAnimation

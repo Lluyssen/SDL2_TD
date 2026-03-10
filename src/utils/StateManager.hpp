@@ -3,8 +3,8 @@
 #include <vector>
 #include <memory>
 #include <functional>
-
 #include "GameContext.hpp"
+
 class StateManager;
 
 // Interface de base pour tous les états du jeu
