@@ -2,12 +2,12 @@
 
 #include <core/StateManager.hpp>
 #include <ui/UIButton.hpp>
-#include <states/GameState.hpp>
+#include <states/LevelSelectionState.hpp>
 #include <states/MenuState.hpp>
 #include <ui/animation/ScaleHoverAnimation.hpp>
 #include <ui/animation/PixelRevealAnimation.hpp>
 
-class GameState;
+class LevelSelectionState;
 class MenuState;
 
 class PauseMenuState : public IGameState
@@ -92,7 +92,7 @@ public:
             sm.popState();
             break; // Resume
         case 1:
-            sm.changeState<GameState>();
+            sm.changeState<LevelSelectionState>();
             break; // Restart
         case 2:
             sm.changeState<MenuState>();

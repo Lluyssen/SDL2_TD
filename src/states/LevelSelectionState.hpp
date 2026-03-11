@@ -10,11 +10,12 @@
 
 // Etat principal de la sélection de niveau.
 // Affiche la carte, les nodes de niveaux et un tooltip animé.
-class GameState : public IGameState
+class LevelSelectionState : public IGameState
 {
 private:
     // différentes textures de carte selon la progression
     std::vector<Texture2D> _maps;
+    Texture2D _ruinTexture{};
 
     // texture utilisée par la bannière du tooltip
     Texture2D _bannerTexture{};
@@ -96,6 +97,7 @@ public:
         // chargement de la bannière du tooltip
         if (_bannerTexture.id != 0)
             UnloadTexture(_bannerTexture);
+        _ruinTexture = LoadTexture("../assets/ui/levelSelect/ruineTexture.png");
 
         _bannerTexture = LoadTexture("../assets/ui/levelSelect/banner.png");
 
@@ -215,7 +217,6 @@ public:
 
         // animation de pulsation du niveau jouable
         float pulse = 1.0f + sinf(_pulseTimer * 3.f) * 0.08f;
-
         for (auto &node : _levels)
         {
             Vector2 pos = node.getScreenPos(w, h);
@@ -227,7 +228,20 @@ public:
                 _whiteIdle.setScale(.75f * _uiScale);
             }
             else
+            {
+                // dessine la ruine derrière
+                float scale = 0.75f * _uiScale;
+
+                DrawTextureEx(
+                    _ruinTexture,
+                    {pos.x - (_ruinTexture.width * scale) * 0.5f,
+                     pos.y - (_ruinTexture.height * scale) * 0.5f + (-50.f * _uiScale)},
+                    0.f,
+                    scale,
+                    WHITE);
+
                 _redIdle.draw(pos);
+            }
         }
 
         // dessin du tooltip
@@ -247,5 +261,8 @@ public:
             UnloadTexture(_bannerTexture);
 
         UnloadSound(_tooltipOpenSound);
+
+        if (_ruinTexture.id != 0)
+            UnloadTexture(_ruinTexture);
     }
 };

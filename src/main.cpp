@@ -4,9 +4,10 @@
 #include "core/GameContext.hpp"
 #include "states/MenuState.hpp"
 #include "states/SandBoxState.hpp"
+#include <states/LevelSelectionState.hpp>
+#include <iostream>
 
 const bool START_IN_SANDBOX = false;
-#include "states/include/LevelOneState.h"
 
 int main(void)
 {
@@ -18,16 +19,21 @@ int main(void)
 
     // Init raylib
     InitWindow(context.getWidth(), context.getHeight(), "Tower Defense");
+    HideCursor();
     SetExitKey(KEY_NULL);
     SetTargetFPS(60);
     InitAudioDevice();
+
+    Texture2D cursorTexture = LoadTexture("../assets/ui/cursor.png");
+    if (cursorTexture.id == 0)
+        std::cout << "Erreur chargement texture cursor.png\n";
 
     // Manager de states
     StateManager stateManager(context);
 
     // Premier état
     if (START_IN_SANDBOX)
-        stateManager.pushState<LevelOneState>();
+        stateManager.pushState<LevelSelectionState>();
     else
         stateManager.pushState<MenuState>();
 
@@ -35,6 +41,7 @@ int main(void)
     while (!WindowShouldClose())
     {
         float dt = GetFrameTime();
+        Vector2 mouse = GetMousePosition();
 
         // Update logique
         stateManager.update(dt);
@@ -44,6 +51,7 @@ int main(void)
 
         // Render
         stateManager.render();
+        DrawTexture(cursorTexture, mouse.x - cursorTexture.width / 2, mouse.y - cursorTexture.height / 2, WHITE);
 
         EndDrawing();
 
@@ -54,6 +62,7 @@ int main(void)
     // Nettoyage propre
     context.unloadAllTextures();
     CloseAudioDevice();
+    UnloadTexture(cursorTexture);
     CloseWindow();
 
     return 0;

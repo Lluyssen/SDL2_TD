@@ -2,7 +2,7 @@
 
 #include "raylib.h"
 #include <ui/Starfield.hpp>
-#include <states/GameState.hpp>
+#include <states/LevelSelectionState.hpp>
 #include <states/menu/MenuBackground.hpp>
 #include <states/menu/MenuButtons.hpp>
 #include <states/menu/MenuNPC.hpp>
@@ -192,7 +192,7 @@ public:
         switch (id)
         {
         case ButtonID::Play:
-            sm.changeState<GameState>();
+            sm.changeState<LevelSelectionState>();
             break;
         case ButtonID::Quit:
             exit(0);
