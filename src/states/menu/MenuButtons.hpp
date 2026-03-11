@@ -20,14 +20,12 @@ public:
     // Initialise les boutons et leurs animations
     void init(GameContext &ctx)
     {
-        std::cout << "MenuButtons::init()\n";
-         
-        const float w = ctx.getWidth();
-        const float h = ctx.getHeight();
+        int w = ctx.getWidth();
+        int h = ctx.getHeight();
 
-        const float bw = 320;
-        const float bh = 70;
-        const float startY = h / 2;
+        int bw = 320;
+        int bh = 70;
+        int startY = h / 2;
 
         _buttons.clear();
         _buttons.reserve(3);
@@ -35,17 +33,17 @@ public:
         _buttons.push_back(
             std::make_unique<PixelButton>(
                 "Game",
-                Rectangle{(w / 2 - bw / 2), (startY + spacing), bw, bh}));
+                Rectangle{(float)(w / 2 - bw / 2), (float)startY, (float)bw, (float)bh}));
 
         _buttons.push_back(
             std::make_unique<PixelButton>(
                 "Settings",
-                Rectangle{(w / 2 - bw / 2), (startY + spacing * 2), bw, bh}));
+                Rectangle{(float)(w / 2 - bw / 2), (float)(startY + spacing), (float)bw, (float)bh}));
 
         _buttons.push_back(
             std::make_unique<PixelButton>(
                 "Quit",
-                Rectangle{(w / 2 - bw / 2), (startY + spacing * 3), bw, bh}));
+                Rectangle{(float)(w / 2 - bw / 2), (float)(startY + spacing * 2), (float)bw, (float)bh}));
 
         for (auto &b : _buttons)
         {

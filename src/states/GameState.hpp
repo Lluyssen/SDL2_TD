@@ -6,143 +6,246 @@
 #include <ui/petitMenu/PetitMenu.hpp>
 #include <states/PauseMenuState.hpp>
 #include <states/MapState.hpp>
+#include <ui/animation/PixelRevealTextureAnimation.hpp>
 
-class PauseMenuState;
-
+// Etat principal de la sélection de niveau.
+// Affiche la carte, les nodes de niveaux et un tooltip animé.
 class GameState : public IGameState
 {
 private:
-    Texture2D _mapTexture{};
-    AnimatedSprite _lockAnim;
+    // différentes textures de carte selon la progression
+    std::vector<Texture2D> _maps;
 
+    // texture utilisée par la bannière du tooltip
+    Texture2D _bannerTexture{};
+
+    // sprites animés des nodes (niveau disponible / verrouillé)
+    AnimatedSprite _whiteIdle;
+    AnimatedSprite _redIdle;
+
+    // liste des nodes de niveaux sur la carte
     std::vector<LevelNode> _levels;
-    Vector2 _bgOffset{0.f, 0.f};
 
+    // tooltip affiché lorsqu'on survole un niveau
     PetitMenu _tooltip;
-    Texture2D _tooltipTexture{};
 
-    static constexpr float ZOOM = 1.05f;
-    static constexpr float PARALLAX_AMOUNT = 40.f;
-    static constexpr float PARALLAX_SPEED = 4.f;
+    // son joué lors de l'ouverture du tooltip
+    Sound _tooltipOpenSound{};
 
-    // conversion map -> écran
-    Vector2 worldToScreen(Vector2 world, int w, int h, float drawW, float drawH) const
-    {
-        float scaleX = drawW / (float)_mapTexture.width;
-        float scaleY = drawH / (float)_mapTexture.height;
+    // animation appliquée à la texture du tooltip
+    PixelRevealTextureAnimation reveal;
 
-        return {
-            world.x * scaleX + (w - drawW) * 0.5f + _bgOffset.x,
-            world.y * scaleY + (h - drawH) * 0.5f + _bgOffset.y};
-    }
+    // timer utilisé pour l'effet de pulsation du niveau actif
+    float _pulseTimer = 0.f;
+
+    // permet de cliquer pour afficher les coordonnées normalisées
+    bool _debugNodePlacement = true;
+
+    // résolution de référence utilisée pour le scaling UI
+    static constexpr float REF_WIDTH = 1920.f;
+    static constexpr float REF_HEIGHT = 1080.f;
+
+    float _uiScale = 1.f;
+
+    // lignes de texte affichées dans le tooltip
+    std::vector<std::string> _tooltipLines;
 
 public:
+    // appelé lors de l'entrée dans cet état
     void onEnter(StateManager &sm) override
     {
         auto &ctx = sm.getContext();
 
-        _mapTexture = LoadTexture("../assets/ui/map.png");
-        _lockAnim.loadSheet(ctx, "../assets/ui/flag/Graysprite.png", 6, 0.2f);
+        // calcul du scale UI basé sur la résolution actuelle
+        float scaleX = ctx.getWidth() / REF_WIDTH;
+        float scaleY = ctx.getHeight() / REF_HEIGHT;
+        _uiScale = std::min(scaleX, scaleY);
 
-        _tooltipTexture = LoadTexture("../assets/ui/papyrus.png");
-        _tooltip.init(_tooltipTexture);
+        _tooltipLines.reserve(4);
 
-        // Définition des niveaux
+        // chargement du son du tooltip
+        _tooltipOpenSound = LoadSound("../assets/audio/banner_open.wav");
+
+        // configuration du tooltip
+        _tooltip.setTextureScale(1.2f);
+        _tooltip.setAnimation(&reveal);
+
+        // libère les anciennes textures de carte
+        for (auto &t : _maps)
+        {
+            if (t.id != 0)
+                UnloadTexture(t);
+        }
+
+        _maps.clear();
+
+        // charge la carte principale
+        _maps.push_back(LoadTexture("../assets/ui/levelSelect/map/map.png"));
+
+        // charge les variantes de carte débloquées progressivement
+        for (int i = 1; i < 6; ++i)
+            _maps.push_back(LoadTexture(TextFormat("../assets/ui/levelSelect/map/map%d.png", i)));
+
+        // initialisation des sprites animés des nodes
+        _whiteIdle.setScale(.75f * _uiScale);
+        _whiteIdle.loadAtlas(ctx, "../assets/ui/levelSelect/wIdle.png", "../assets/ui/levelSelect/wIdle.json", 0.15f);
+
+        _redIdle.setScale(.75f * _uiScale);
+        _redIdle.loadAtlas(ctx, "../assets/ui/levelSelect/redIdle.png", "../assets/ui/levelSelect/redIdle.json", 0.15f);
+
+        // chargement de la bannière du tooltip
+        if (_bannerTexture.id != 0)
+            UnloadTexture(_bannerTexture);
+
+        _bannerTexture = LoadTexture("../assets/ui/levelSelect/banner.png");
+
+        _tooltip.init(_bannerTexture, _tooltipOpenSound);
+
+        // positions normalisées des niveaux sur la carte
         _levels = {
-            {0, {160, 120}},
-            {1, {700, 650}},
-            {2, {1100, 250}},
-            {3, {1020, 740}},
-            {4, {300, 700}}};
+            {0, {0.139f, 0.215f}},
+            {1, {0.173f, 0.720f}},
+            {2, {0.467f, 0.610f}},
+            {3, {0.696f, 0.230f}},
+            {4, {0.671f, 0.730f}}};
 
-        for (auto &n : _levels)
-            n.init(ctx);
+        _pulseTimer = 0.f;
     }
 
     void update(StateManager &sm, float dt) override
     {
         auto &ctx = sm.getContext();
-        dt = std::min(dt, 0.05f); // clamp dt pour stabilité
 
         Vector2 mouse = GetMousePosition();
+
         int w = ctx.getWidth();
         int h = ctx.getHeight();
-        float drawW = w * ZOOM;
-        float drawH = h * ZOOM;
-        bool tooltipVisible = false;
 
-        if (IsKeyPressed(KEY_ESCAPE))
+        // niveau le plus élevé débloqué
+        int unlocked = ctx.getHighestUnlockedLevel();
+
+        bool changeStateRequested = false;
+
+        LevelNode *hovered = nullptr;
+
+        // mode debug pour récupérer les positions normalisées des nodes
+        if (_debugNodePlacement && IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
         {
-            sm.pushState<PauseMenuState>();
+            float nx = mouse.x / w;
+            float ny = mouse.y / h;
+
+            TraceLog(LOG_INFO, "Node position normalized: {%.3ff, %.3ff}", nx, ny);
+        }
+
+        // mise à jour des nodes
+        for (auto &node : _levels)
+        {
+            Vector2 pos = node.getScreenPos(w, h);
+
+            bool playable = node.id() == unlocked;
+
+            // si on clique sur un niveau jouable → changement d'état
+            if (node.update(mouse, pos, playable))
+            {
+                ctx.setSelectedLevel(node.id());
+                changeStateRequested = true;
+            }
+
+            // détection du node survolé
+            if (node.isHovered())
+                hovered = &node;
+        }
+
+        if (changeStateRequested)
+        {
+            sm.changeState<MapState>();
             return;
         }
 
-        int unlocked = ctx.getHighestUnlockedLevel();
-
-        // Mise à jour des nodes
-        for (auto &node : _levels)
+        // gestion du tooltip
+        if (hovered)
         {
-            bool unlockedNode = node.id() <= unlocked;
-            Vector2 pos = worldToScreen(node.position(), w, h, drawW, drawH);
+            _tooltipLines.clear();
 
-            if (node.update(dt, mouse, pos, unlockedNode))
-                sm.changeState<MapState>();
+            _tooltipLines.push_back(TextFormat("Level %d", hovered->id() + 1));
+            _tooltipLines.emplace_back("Difficulty: Easy");
+            _tooltipLines.emplace_back("Reward: 200 gold");
 
-            if (!tooltipVisible && CheckCollisionPointCircle(mouse, pos, 30))
-            {
-                std::vector<std::string> lines = {
-                    TextFormat("Level %d", node.id() + 1),
-                    "Difficulty: Easy",
-                    "Reward: 200 gold"};
-                _tooltip.show({pos.x, pos.y - 40}, lines);
-                tooltipVisible = true;
-            }
+            Vector2 pos = hovered->getScreenPos(w, h);
+            pos.y -= 60.f;
+
+            // affiche ou met à jour la position du tooltip
+            if (!_tooltip.isVisible())
+                _tooltip.show(pos, _tooltipLines, w, h);
+            else
+                _tooltip.setPosition(pos);
         }
-
-        if (!tooltipVisible)
+        else
             _tooltip.hide();
 
-        // Parallaxe souris
-        float nx = (mouse.x / w) - 0.5f;
-        float ny = (mouse.y / h) - 0.5f;
-        _bgOffset.x += (-nx * PARALLAX_AMOUNT - _bgOffset.x) * PARALLAX_SPEED * dt;
-        _bgOffset.y += (-ny * PARALLAX_AMOUNT - _bgOffset.y) * PARALLAX_SPEED * dt;
+        _pulseTimer += dt;
 
-        _lockAnim.update(dt);
+        // mise à jour des animations
+        _whiteIdle.update(dt);
+        _redIdle.update(dt);
+        _tooltip.update(dt);
+
         ctx.updateMusic();
     }
 
     void render(StateManager &sm) override
     {
         auto &ctx = sm.getContext();
+
         int w = ctx.getWidth();
         int h = ctx.getHeight();
 
-        float drawW = w * ZOOM;
-        float drawH = h * ZOOM;
+        int unlocked = ctx.getHighestUnlockedLevel();
+
+        // sélection de la carte correspondant au niveau débloqué
+        Texture2D &map = _maps[std::min(unlocked, static_cast<int>(_maps.size()) - 1)];
 
         ClearBackground(BLACK);
 
-        // Dessin de la map
-        Rectangle src{0.f, 0.f, (float)_mapTexture.width, (float)_mapTexture.height};
-        Rectangle dst{(w - drawW) * 0.5f + _bgOffset.x, (h - drawH) * 0.5f + _bgOffset.y, drawW, drawH};
-        DrawTexturePro(_mapTexture, src, dst, {0.f, 0.f}, 0.f, WHITE);
+        // dessin de la carte en plein écran
+        Rectangle src{0.f, 0.f, static_cast<float>(map.width), static_cast<float>(map.height)};
+        Rectangle dst{0.f, 0.f, static_cast<float>(w), static_cast<float>(h)};
 
-        int unlocked = ctx.getHighestUnlockedLevel();
+        DrawTexturePro(map, src, dst, {0.f, 0.f}, 0.f, WHITE);
+
+        // animation de pulsation du niveau jouable
+        float pulse = 1.0f + sinf(_pulseTimer * 3.f) * 0.08f;
 
         for (auto &node : _levels)
         {
-            bool unlockedNode = node.id() <= unlocked;
-            Vector2 pos = worldToScreen(node.position(), w, h, drawW, drawH);
-            node.draw(pos, _lockAnim, unlockedNode);
+            Vector2 pos = node.getScreenPos(w, h);
+
+            if (node.id() == unlocked)
+            {
+                _whiteIdle.setScale(.75f * pulse * _uiScale);
+                _whiteIdle.draw(pos);
+                _whiteIdle.setScale(.75f * _uiScale);
+            }
+            else
+                _redIdle.draw(pos);
         }
 
+        // dessin du tooltip
         _tooltip.draw(w, h);
     }
 
     void onExit(StateManager &) override
     {
-        UnloadTexture(_mapTexture);
-        UnloadTexture(_tooltipTexture);
+        // libération des textures
+        for (auto &t : _maps)
+        {
+            if (t.id != 0)
+                UnloadTexture(t);
+        }
+
+        if (_bannerTexture.id != 0)
+            UnloadTexture(_bannerTexture);
+
+        UnloadSound(_tooltipOpenSound);
     }
 };

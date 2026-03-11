@@ -16,6 +16,7 @@ class GameContext
 {
 private:
     int _highestUnlockedLevel = 0;
+    int _selectedLevel = -1;
     int _screenWidth = 1280;
     int _screenHeight = 720;
 
@@ -26,7 +27,7 @@ private:
     bool _musicLoaded = false;
 
 public:
-    GameContext() = default;
+    GameContext(void) = default;
 
     ~GameContext()
     {
@@ -35,8 +36,10 @@ public:
 
     // -------- Screen --------
 
-    int getWidth() const { return _screenWidth; }
-    int getHeight() const { return _screenHeight; }
+    int getWidth(void) const { return _screenWidth; }
+    int getHeight(void) const { return _screenHeight; }
+    void setSelectedLevel(int id) { _selectedLevel = id; }
+    int getSelectedLevel(void) const { return _selectedLevel; }
 
     void setResolution(int w, int h)
     {
@@ -46,7 +49,7 @@ public:
 
     // -------- Progression --------
 
-    int getHighestUnlockedLevel() const
+    int getHighestUnlockedLevel(void) const
     {
         return _highestUnlockedLevel;
     }

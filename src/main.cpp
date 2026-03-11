@@ -14,7 +14,7 @@ int main(void)
     GameContext context;
 
     SetConfigFlags(FLAG_WINDOW_HIGHDPI);
-    context.setResolution(1600, 1050);
+    context.setResolution(1920, 1080);
 
     // Init raylib
     InitWindow(context.getWidth(), context.getHeight(), "Tower Defense");

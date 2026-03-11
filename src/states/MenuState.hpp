@@ -10,8 +10,6 @@
 #include <core/MusicManager.hpp>
 #include <core/StateManager.hpp>
 
-class LevelOneState;
-
 // État du menu principal : gère fond animé, étoiles, UI, PNJ et musique.
 class MenuState : public IGameState
 {
