@@ -8,11 +8,22 @@
 #include <states/MapState.hpp>
 #include <ui/animation/PixelRevealTextureAnimation.hpp>
 #include <ui/animation/Particles.hpp>
+#include <core/Utils.hpp>
+#include <ui/animation/BulleAnimation.hpp>
+
+// Niveaux définis en coordonnées normalisées (0..1)
+// Cela permet de rendre la map indépendante de la résolution écran.
+static const std::array<LevelNode, 5> LEVELS = {{{0, {0.139f, 0.215f}},
+                                                 {1, {0.173f, 0.720f}},
+                                                 {2, {0.467f, 0.610f}},
+                                                 {3, {0.696f, 0.230f}},
+                                                 {4, {0.671f, 0.730f}}}};
 
 class LevelSelectionState : public IGameState
 {
 private:
-    std::vector<Texture2D> _maps;
+    // Tableau fixe car le nombre de maps est connu à la compilation
+    std::array<Texture2D, 6> _maps{};
 
     Texture2D _ruinTexture{};
     Texture2D _bannerTexture{};
@@ -22,6 +33,25 @@ private:
     AnimatedSprite _whiteIdle;
     AnimatedSprite _redIdle;
 
+    // Sprites animés décoratifs (liquide magique)
+    std::array<AnimatedSprite, 4> _liquid;
+
+    // Effet de bulles associé à chaque liquide
+    std::array<BubbleAnimation, 4> _bubbles;
+
+    // Positions des liquides en coordonnées normalisées
+    std::array<Vector2, 4> _liquidPos{{{0.658854f, 0.918519f},
+                                       {0.747396f, 0.791667f},
+                                       {0.732292f, 0.600926f},
+                                       {0.784375f, 0.728704f}}};
+
+    // Cache des positions converties en pixels écran
+    // évite de recalculer normalizedToScreen chaque frame
+    std::array<Vector2, 4> _liquidScreenPos{};
+
+    std::array<float, 4> _liquidScale{1.f, .8f, .6f, .8f};
+
+    // Copie locale des nodes pour permettre modifications runtime
     std::vector<LevelNode> _levels;
 
     PetitMenu _tooltip;
@@ -34,85 +64,122 @@ private:
     float _pulseTimer = 0.f;
     float _uiScale = 1.f;
 
+    // Offset utilisé pour créer l'effet de déplacement du fog
     float _fogOffsetX = 0.f;
     float _fogOffsetY = 0.f;
 
     std::vector<Particle> _particles;
     std::vector<Particle> _redParticles;
 
+    // Résolution de référence utilisée pour le scaling UI
     static constexpr float REF_WIDTH = 1920.f;
     static constexpr float REF_HEIGHT = 1080.f;
 
 private:
-    // UTILITIES
+    // Sécurise la libération d'une texture GPU
+    // évite double free si la texture n'est pas chargée
     void safeUnload(Texture2D &tex)
     {
-        if (tex.id != 0)
+        if (tex.id)
         {
             UnloadTexture(tex);
-            tex.id = 0;
+            tex = {};
         }
     }
 
-    // FOG
+    // Initialise les pools de particules
+    // reserve évite les reallocations runtime
+    void initParticles(std::vector<Particle> &p)
+    {
+        p.clear();
+        p.reserve(128);
+    }
+
     void updateFog(float dt)
     {
+        // déplacement lent pour simuler un brouillard dynamique
         _fogOffsetX += dt * 10.f;
         _fogOffsetY += dt * 4.f;
     }
 
     void drawFog(int w, int h)
     {
-        if (_fogTexture.id == 0)
+        if (!_fogTexture.id)
             return;
 
-        float scale = 2.f;
+        constexpr float scale = 2.f;
 
         float wTex = _fogTexture.width * scale;
         float hTex = _fogTexture.height * scale;
 
-        for (float x = -wTex; x < w + wTex; x += wTex)
+        // modulo pour créer un effet de scrolling infini
+        float offsetX = fmod(_fogOffsetX, wTex);
+        float offsetY = fmod(_fogOffsetY, hTex);
+
+        for (float x = -wTex; x < w; x += wTex)
         {
-            for (float y = -hTex; y < h + hTex; y += hTex)
-                DrawTextureEx(_fogTexture, {x + fmod(_fogOffsetX, wTex), y + fmod(_fogOffsetY, hTex)}, 0, scale, Fade(WHITE, 0.35f));
+            for (float y = -hTex; y < h; y += hTex)
+            {
+                DrawTextureEx(
+                    _fogTexture,
+                    {x + offsetX, y + offsetY},
+                    0,
+                    scale,
+                    Fade(WHITE, 0.35f));
+            }
         }
     }
 
-    // BackGround
+    void drawLiquid()
+    {
+        // Utilise les positions écran déjà calculées
+        for (size_t i = 0; i < _liquid.size(); i++)
+            _liquid[i].draw(_liquidScreenPos[i]);
+    }
+
     void drawMap(Texture2D &map, int w, int h)
     {
-        if (map.id == 0)
+        if (!map.id)
             return;
 
         Rectangle src{0, 0, (float)map.width, (float)map.height};
         Rectangle dst{0, 0, (float)w, (float)h};
 
+        // étire la texture pour couvrir toute la fenêtre
         DrawTexturePro(map, src, dst, {0, 0}, 0, WHITE);
     }
 
-    // NODE
     void drawActiveNode(Vector2 pos, float pulse)
     {
-        float haloScale = (1.2f + sinf(_pulseTimer * 2.f) * 0.1f) * _uiScale * 0.15;
+        // halo pulsant autour du niveau actif
+        float haloScale = (1.2f + sinf(_pulseTimer * 2.f) * 0.1f) * _uiScale * 0.15f;
 
-        DrawTextureEx(_haloTexture, {pos.x - (_haloTexture.width * haloScale) * 0.5f, pos.y - (_haloTexture.height * haloScale) * 0.5f}, 0, haloScale, Fade(GOLD, 0.7f));
-        DrawTextureEx(_haloTexture, {pos.x - (_haloTexture.width * haloScale * 1.4f) * 0.5f, pos.y - (_haloTexture.height * haloScale * 1.4f) * 0.5f}, 0, haloScale * 1.4f, Fade(YELLOW, 0.25f));
+        float halfW = (_haloTexture.width * haloScale) * 0.5f;
+        float halfH = (_haloTexture.height * haloScale) * 0.5f;
+
+        DrawTextureEx(_haloTexture, {pos.x - halfW, pos.y - halfH}, 0, haloScale, Fade(GOLD, 0.7f));
+
+        DrawTextureEx(_haloTexture, {pos.x - halfW * 1.4f, pos.y - halfH * 1.4f}, 0, haloScale * 1.4f, Fade(YELLOW, 0.25f));
 
         _whiteIdle.setScale(.75f * pulse * _uiScale);
         _whiteIdle.draw(pos);
+
+        // on restaure l'échelle pour éviter qu'elle reste modifiée
         _whiteIdle.setScale(.75f * _uiScale);
     }
 
-    void drawLockedNode(Vector2 pos)
+    void drawLockedNode(Vector2 pos, float scale)
     {
-        float scale = 0.75f * _uiScale;
+        // ruine affichée pour les niveaux verrouillés
         DrawTextureEx(_ruinTexture, {pos.x - (_ruinTexture.width * scale) * 0.5f, pos.y - (_ruinTexture.height * scale) * 0.5f - 50.f * _uiScale}, 0, scale, WHITE);
+
         _redIdle.draw(pos);
     }
 
     void drawNodes(int w, int h, int unlocked)
     {
         float pulse = 1.f + sinf(_pulseTimer * 3.f) * 0.08f;
+        float scale = .75f * _uiScale;
 
         for (auto &node : _levels)
         {
@@ -121,7 +188,7 @@ private:
             if (node.id() == unlocked)
                 drawActiveNode(pos, pulse);
             else
-                drawLockedNode(pos);
+                drawLockedNode(pos, scale);
         }
     }
 
@@ -130,13 +197,17 @@ public:
     {
         auto &ctx = sm.getContext();
 
-        float scaleX = ctx.getWidth() / REF_WIDTH;
-        float scaleY = ctx.getHeight() / REF_HEIGHT;
+        int w = ctx.getWidth();
+        int h = ctx.getHeight();
 
-        _uiScale = std::min(scaleX, scaleY);
+        // calcul du scale UI basé sur la résolution réelle
+        _uiScale = std::min((float)w / REF_WIDTH, (float)h / REF_HEIGHT);
 
-        _particles.clear();
-        _redParticles.clear();
+        initParticles(_particles);
+        initParticles(_redParticles);
+
+        for (auto &b : _bubbles)
+            b.reserve(128);
 
         _tooltipLines.reserve(4);
 
@@ -145,15 +216,11 @@ public:
         _tooltip.setTextureScale(1.2f);
         _tooltip.setAnimation(&reveal);
 
-        for (auto &t : _maps)
-            safeUnload(t);
-
-        _maps.clear();
-
-        _maps.push_back(LoadTexture("../assets/ui/levelSelect/map/map.png"));
+        // chargement des différentes maps
+        _maps[0] = LoadTexture("../assets/ui/levelSelect/map/map.png");
 
         for (int i = 1; i < 6; i++)
-            _maps.push_back(LoadTexture(TextFormat("../assets/ui/levelSelect/map/map%d.png", i)));
+            _maps[i] = LoadTexture(TextFormat("../assets/ui/levelSelect/map/map%d.png", i));
 
         _whiteIdle.setScale(.75f * _uiScale);
         _whiteIdle.loadAtlas(ctx, "../assets/ui/levelSelect/wIdle.png", "../assets/ui/levelSelect/wIdle.json", 0.15f);
@@ -161,84 +228,88 @@ public:
         _redIdle.setScale(.75f * _uiScale);
         _redIdle.loadAtlas(ctx, "../assets/ui/levelSelect/redIdle.png", "../assets/ui/levelSelect/redIdle.json", 0.15f);
 
-        safeUnload(_bannerTexture);
+        for (size_t i = 0; i < _liquid.size(); i++)
+        {
+            _liquid[i].setScale(.75f * _liquidScale[i] * _uiScale);
+            _liquid[i].loadAtlas(ctx, "../assets/ui/levelSelect/liquidSprite.png", "../assets/ui/levelSelect/liquidSprite.json", 0.15f);
+            _liquid[i].setPos(_liquidPos[i]);
+            _liquidScreenPos[i] = utils::normalizedToScreen(_liquidPos[i], w, h); // conversion normalisé -> écran calculée une seule fois
+        }
 
+        safeUnload(_ruinTexture);
         _ruinTexture = LoadTexture("../assets/ui/levelSelect/ruineTexture.png");
-
         _bannerTexture = LoadTexture("../assets/ui/levelSelect/banner.png");
-
         _fogTexture = LoadTexture("../assets/ui/levelSelect/fog.png");
-
         _haloTexture = LoadTexture("../assets/ui/levelSelect/halo.png");
 
         _tooltip.init(_bannerTexture, _tooltipOpenSound);
 
-        _levels = {
-            {0, {0.139f, 0.215f}},
-            {1, {0.173f, 0.720f}},
-            {2, {0.467f, 0.610f}},
-            {3, {0.696f, 0.230f}},
-            {4, {0.671f, 0.730f}}};
+        // copie des niveaux statiques vers structure dynamique
+        _levels.assign(LEVELS.begin(), LEVELS.end());
     }
 
     void update(StateManager &sm, float dt) override
     {
         auto &ctx = sm.getContext();
 
-        Vector2 mouse = GetMousePosition();
-
         int w = ctx.getWidth();
         int h = ctx.getHeight();
+
+        Vector2 mouse = GetMousePosition();
 
         int unlocked = ctx.getHighestUnlockedLevel();
 
         bool changeStateRequested = false;
 
+        // pointeur utilisé pour mémoriser le node hover durant l'itération
         LevelNode *hovered = nullptr;
 
         for (auto &node : _levels)
         {
+            // conversion normalisé → écran (évite de stocker les positions pixels)
             Vector2 pos = node.getScreenPos(w, h);
 
             bool playable = node.id() == unlocked;
 
+            // update retourne true si le node est activé (click)
             if (node.update(mouse, pos, playable))
             {
                 ctx.setSelectedLevel(node.id());
                 changeStateRequested = true;
             }
 
+            // pas de break volontaire ici pour laisser les autres nodes générer des particules
             if (node.isHovered())
                 hovered = &node;
 
-            if (node.id() == unlocked)
-            {
-                if (GetRandomValue(0, 100) < 10)
-                    spawnParticle(pos, _particles, _uiScale);
-            }
-            else if (node.id() > unlocked)
-            {
-                if (GetRandomValue(0, 100) < 6)
-                    spawnParticle(pos, _redParticles, _uiScale);
-            }
+            int id = node.id();
+
+            // génération aléatoire de particules autour du niveau actif
+            if (id == unlocked && GetRandomValue(0, 100) < 10)
+                spawnParticle(pos, _particles, _uiScale);
+
+            // particules différentes pour les niveaux verrouillés
+            else if (id > unlocked && GetRandomValue(0, 100) < 6)
+                spawnParticle(pos, _redParticles, _uiScale);
         }
 
+        // changement d'état différé pour éviter de continuer l'update de l'écran actuel
         if (changeStateRequested)
         {
             sm.changeState<MapState>();
             return;
         }
 
-        // Tooltips
+        // --- TOOLTIP ---
         if (hovered)
         {
-            _tooltipLines.clear();
-            _tooltipLines.push_back(TextFormat("Level %d", hovered->id() + 1));
-            _tooltipLines.emplace_back("Difficulty: Easy");
-            _tooltipLines.emplace_back("Reward: 200 gold");
+            std::string title = "Level " + std::to_string(hovered->id() + 1);
+
+            // reconstruction du texte chaque frame (simple mais non optimal)
+            _tooltipLines = {title, "Difficulty: Easy", "Reward: 200 gold"};
 
             Vector2 pos = hovered->getScreenPos(w, h);
-            pos.y -= 60.f;
+            pos.y -= 60.f; // offset vertical UI
 
             if (!_tooltip.isVisible())
                 _tooltip.show(pos, _tooltipLines, w, h);
@@ -248,18 +319,36 @@ public:
         else
             _tooltip.hide();
 
-        // Particles
+        // update systèmes de particules
         updateParticles(_particles, dt);
         updateParticles(_redParticles, dt);
 
         updateFog(dt);
 
-        _pulseTimer += dt;
+        // timer utilisé pour les animations sin/cos pulsantes
+        _pulseTimer = fmod(_pulseTimer + dt, 1000.f);
 
         _whiteIdle.update(dt);
         _redIdle.update(dt);
+
+        for (auto &l : _liquid)
+            l.update(dt);
+
+        for (size_t i = 0; i < _bubbles.size(); i++)
+        {
+            // position synchronisée avec le liquide correspondant
+            _bubbles[i].setPos(_liquidScreenPos[i]);
+
+            // spawn probabiliste (~5%) pour éviter une génération continue
+            if (GetRandomValue(0, 20) == 0)
+                _bubbles[i].spawn();
+
+            _bubbles[i].update(dt);
+        }
+
         _tooltip.update(dt);
 
+        // gestion musique centralisée dans le contexte
         ctx.updateMusic();
     }
 
@@ -271,21 +360,19 @@ public:
         int h = ctx.getHeight();
 
         int unlocked = ctx.getHighestUnlockedLevel();
-
-        if (_maps.empty())
-            return;
-
-        int index = std::min(unlocked, (int)_maps.size() - 1);
+        int index = std::min(unlocked, 5);
 
         Texture2D &map = _maps[index];
 
         ClearBackground(BLACK);
 
         drawMap(map, w, h);
-
         drawFog(w, h);
-
         drawNodes(w, h, unlocked);
+        drawLiquid();
+
+        for (auto &b : _bubbles)
+            b.draw(GREEN, LIME);
 
         drawParticles(_particles, GOLD, YELLOW, WHITE);
         drawParticles(_redParticles, MAROON, RED, ORANGE);
@@ -302,6 +389,7 @@ public:
         safeUnload(_ruinTexture);
         safeUnload(_fogTexture);
         safeUnload(_haloTexture);
+
         UnloadSound(_tooltipOpenSound);
     }
 };

@@ -58,6 +58,8 @@ private:
     // scale appliqué au rendu
     float _scale = 1.f;
 
+    Vector2 _pos;
+
 public:
     AnimatedSprite(void) = default;
 
@@ -75,6 +77,9 @@ public:
     {
         _scale = f;
     }
+
+    Vector2 getPos(void) { return _pos; }
+    void setPos(Vector2 pos) { _pos = pos; }
 
     // Charge une animation composée de plusieurs images séparées :
     // basePath0.png, basePath1.png, ...

@@ -25,9 +25,7 @@ public:
 
     Vector2 getScreenPos(int screenW, int screenH) const
     {
-        return {
-            _normalizedPos.x * screenW,
-            _normalizedPos.y * screenH};
+        return { _normalizedPos.x * screenW, _normalizedPos.y * screenH};
     }
 
     bool isHovered(void) const
