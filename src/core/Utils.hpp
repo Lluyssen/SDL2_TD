@@ -14,6 +14,15 @@ namespace utils
     }
 
     // imprime la position normalisée dans la console
+    /*
+        auto &ctx = sm.getContext();
+
+        int w = ctx.getWidth();
+        int h = ctx.getHeight();
+
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
+            utils::printMouseNormalized(w, h);
+    */
     inline void printMouseNormalized(int width, int height)
     {
         Vector2 n = getMouseNormalized(width, height);
